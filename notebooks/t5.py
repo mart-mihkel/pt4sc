@@ -1,12 +1,11 @@
 import marimo
 
-__generated_with = "0.20.1"
+__generated_with = "0.20.2"
 app = marimo.App()
 
 
 @app.cell
 def _():
-    from typing import get_args
 
     import marimo as mo
     import torch
@@ -18,17 +17,15 @@ def _():
         T5ForSequenceClassification,
     )
 
-    from icft.datasets.multinerd import MultinerdTag, Multinerd
+    from icft.datasets.multinerd import Multinerd
 
     return (
         AutoTokenizer,
         CrossEntropyLoss,
         DataCollatorWithPadding,
         Multinerd,
-        MultinerdTag,
         T5ForSequenceClassification,
         Tensor,
-        get_args,
         mo,
         torch,
     )
@@ -39,9 +36,7 @@ def _(
     AutoTokenizer,
     DataCollatorWithPadding,
     Multinerd,
-    MultinerdTag,
     T5ForSequenceClassification,
-    get_args,
 ):
     _model_path = "google-t5/t5-small"
 
@@ -49,23 +44,27 @@ def _(
 
     _data = Multinerd(
         tokenizer=tokenizer,
+        task="seq-cls",
         system_prompt_mode="none",
-        workers=1,
-        split=["train[:10]", "validation[:10]", "test[:10]"],
+        split=["train[:8]", "validation[:1]", "test[:1]"],
         filter_english=False,
     )
 
-    _data.tokenize_sequence_classification()
     _collator = DataCollatorWithPadding(tokenizer=tokenizer)
-    batch = _collator(_data.train[:10])
+    batch = _collator(_data.train[:8])
 
     model = T5ForSequenceClassification.from_pretrained(
         _model_path,
-        num_labels=len(get_args(MultinerdTag.__value__)),
+        num_labels=len(Multinerd.ID2TAG),
+        id2label=Multinerd.ID2TAG,
+        label2id=Multinerd.TAG2ID,
     )
 
+    encoder = model.transformer.encoder
+    head = model.classification_head
+
     model
-    return batch, model
+    return batch, encoder, head, model
 
 
 @app.cell
@@ -156,25 +155,11 @@ def _(
 
 
 @app.cell
-def _(
-    CrossEntropyLoss,
-    batch_size,
-    input_ids,
-    labels,
-    model,
-    num_virtual_tokens,
-    out,
-    torch,
-):
+def _(CrossEntropyLoss, attn, head, labels, model, out):
     seq_out = out[0]
-    hidden_size = seq_out.shape[2]
+    sent_repr = (attn.unsqueeze(-1) * seq_out).mean(dim=1)
 
-    inputs_eos_mask = input_ids.eq(model.config.eos_token_id)
-    prefix_mask = torch.zeros(batch_size, num_virtual_tokens).bool()
-    eos_mask = torch.cat([prefix_mask, inputs_eos_mask], dim=1)
-    sent_repr = seq_out[eos_mask, :].view(batch_size, -1, hidden_size)[:, -1, :]
-
-    logits = model.classification_head(sent_repr)
+    logits = head(sent_repr)
     loss_fct = CrossEntropyLoss()
     loss_fct(
         logits.view(-1, model.config.num_labels),
@@ -188,16 +173,9 @@ def _(mo):
     mo.md(r"""
     ### Encoder Forward Pass
 
-    Using just the encoder.
+    Using just the encoder. For BERT models with a classification token prepended to the input sequence it is common to use first pooling, T5 has no such token so we use mean pooling.
     """)
     return
-
-
-@app.cell
-def _(model):
-    encoder = model.transformer.encoder
-    head = model.classification_head
-    return encoder, head
 
 
 @app.cell
@@ -208,7 +186,7 @@ def _(attn, decoder_inputs, encoder, head, inputs, labels, loss_fct):
         decoder_inputs_embeds=decoder_inputs,
     )
 
-    pooled_logits = enc_out.last_hidden_state[:, 0, :]
+    pooled_logits = enc_out.last_hidden_state.mean(dim=1)
 
     loss_fct(
         head(pooled_logits),

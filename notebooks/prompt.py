@@ -1,86 +1,70 @@
 import marimo
 
-__generated_with = "0.19.7"
+__generated_with = "0.20.2"
 app = marimo.App()
 
 
 @app.cell
 def _():
-    from typing import cast
-
-    import marimo as mo
-    import numpy as np
     from transformers import AutoTokenizer
 
     from icft.datasets.multinerd import Multinerd
 
-    return AutoTokenizer, Multinerd, cast, mo, np
+    return AutoTokenizer, Multinerd
 
 
 @app.cell
-def _(AutoTokenizer):
-    _pretrained_model = "jhu-clsp/mmBERT-base"
-    tokenizer = AutoTokenizer.from_pretrained(_pretrained_model)
-    sep_token = tokenizer.special_tokens_map["sep_token"]
-    cls_token = tokenizer.special_tokens_map["cls_token"]
-    return cls_token, sep_token, tokenizer
+def _(AutoTokenizer, Multinerd):
+    tokenizer = AutoTokenizer.from_pretrained("jhu-clsp/mmBERT-base")
+    task = "seq-cls"
+
+    enc_ner = Multinerd(
+        tokenizer=tokenizer,
+        task=task,
+        system_prompt_mode="ner",
+        split=["train[:1]", "validation[:1]", "test[:1]"],
+        filter_english=False,
+    ).train[0]
+
+    enc_random = Multinerd(
+        tokenizer=tokenizer,
+        task=task,
+        system_prompt_mode="random",
+        split=["train[:1]", "validation[:1]", "test[:1]"],
+        filter_english=False,
+    ).train[0]
+
+    enc_none = Multinerd(
+        tokenizer=tokenizer,
+        task=task,
+        system_prompt_mode="none",
+        split=["train[:1]", "validation[:1]", "test[:1]"],
+        filter_english=False,
+    ).train[0]
+    return enc_ner, enc_none, enc_random, tokenizer
 
 
 @app.cell
-def _(Multinerd, mo):
-    print(Multinerd.SYSTEM_PROMPT)
-    mo.md("MultiNERD system prompt")
+def _(enc_ner, tokenizer):
+    print(tokenizer.decode(enc_ner["input_ids"]))
+    print()
+    print("Label: ", enc_ner["labels"])
     return
 
 
 @app.cell
-def _(Multinerd, cls_token, mo, sep_token, tokenizer):
-    _tokens = tokenizer(
-        f"{cls_token} {Multinerd.SYSTEM_PROMPT} {sep_token}",
-        add_special_tokens=False,
-    )
-
-    _ids = _tokens["input_ids"]
-
-    print(_ids)
+def _(enc_random, tokenizer):
+    print(tokenizer.decode(enc_random["input_ids"]))
     print()
-    print(tokenizer.decode(_ids))
-
-    mo.md("Tokenized")
+    print("Label: ", enc_random["labels"])
     return
 
 
 @app.cell
-def _(Multinerd, cast, cls_token, mo, np, sep_token, tokenizer):
-    _base_tokens = tokenizer(Multinerd.SYSTEM_PROMPT, add_special_tokens=False)
-
-    _ids = cast(list[int], _base_tokens["input_ids"])
-    _vocab_size = tokenizer.vocab_size
-    _random_ids = np.random.randint(0, _vocab_size - 1, size=len(_ids))
-
-    _cls_id = tokenizer.convert_tokens_to_ids(cls_token)
-    _sep_id = tokenizer.convert_tokens_to_ids(sep_token)
-
-    _ids = [_cls_id] + _random_ids.tolist() + [_sep_id]
-
-    print(_ids)
+def _(enc_none, tokenizer):
+    print(tokenizer.decode(enc_none["input_ids"]))
     print()
-    print(tokenizer.decode(_ids))
-
-    mo.md("Random gibberish")
-    return
-
-
-@app.cell
-def _(cls_token, mo, tokenizer):
-    _tokens = tokenizer(cls_token, add_special_tokens=False)
-    _ids = _tokens["input_ids"]
-
-    print(_ids)
-    print()
-    print(tokenizer.decode(_ids))
-
-    mo.md("No prompt")
+    print("Label: ", enc_none["labels"])
     return
 
 

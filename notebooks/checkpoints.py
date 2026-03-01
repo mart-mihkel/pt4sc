@@ -16,7 +16,8 @@ def _():
     )
 
     from icft.datasets.multinerd import Multinerd
-    from icft.models.pt import PTModelConfig, PTModel, init_pt_model
+    from icft.models.pt import PTModelConfig, PTModel
+    from icft.scripts.prompt_tune import _init_pt_model as init_pt_model
 
     return (
         AutoTokenizer,
@@ -58,8 +59,7 @@ def _(
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    data = Multinerd(tokenizer=tokenizer)
-    data.tokenize_sequence_classification(workers=workers)
+    data = Multinerd(tokenizer=tokenizer, task=task, workers=workers)
 
     model = init_pt_model(
         task=task,
