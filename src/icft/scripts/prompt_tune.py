@@ -1,4 +1,3 @@
-import logging
 from typing import cast
 
 import torch
@@ -12,10 +11,9 @@ from transformers import (
 
 from icft.common import freeze, init_data, train
 from icft.datasets.multinerd import Multinerd
+from icft.logging import logger
 from icft.models.pt import PTModel, PTModelConfig
 from icft.types import ICFTDataset, ICFTTask, PrefixInit
-
-logger = logging.getLogger(__name__)
 
 
 def _init_pt_model(
@@ -74,10 +72,10 @@ def _init_pt_model(
 
     emb = model.base.get_input_embeddings()
     if prefix_init == "random":
-        logger.info("init random prefix")
+        logger.debug("init random prefix with %d tokens", len(system_ids))
         model.prefix = Parameter(torch.randn(1, len(system_ids), emb.embedding_dim))
     elif prefix_init == "pretrained":
-        logger.info("init pretrained prefix")
+        logger.debug("init pretrained prefix with %d tokens", len(system_ids))
         model.prefix = Parameter(emb(system_ids).detach())
     else:
         raise NotImplementedError(f"Prefix init '{prefix_init}'")
@@ -126,12 +124,12 @@ def main(
 
     logger.info("")
     logger.info("Thing          | %-36s |", "Value")
-    logger.info("---------------+-" + 36 * "-" + "-+-")
+    logger.info("---------------+-" + 36 * "-" + "-+")
     logger.info("model          | %-36s |", model_path)
     logger.info("params         | %-36d |", total)
     logger.info("trainable      | %-36d |", trainable)
     logger.info("prefix         | %-36d |", prefix)
-    logger.info("virtual tokens | %-36d |", prefix)
+    logger.info("virtual tokens | %-36d |", model.prefix.shape[0])
     logger.info("head           | %-36d |", trainable - prefix)
     logger.info("task           | %-36s |", task)
     logger.info("prompt         | %-36s |", "none")

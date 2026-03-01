@@ -1,27 +1,15 @@
-import logging
 from typing import Annotated, Literal
 
 from typer import Option, Typer
 
-logger = logging.getLogger(__name__)
-
-app = Typer(
-    no_args_is_help=True,
-    add_completion=False,
-    pretty_exceptions_show_locals=False,
-)
+app = Typer(no_args_is_help=True, add_completion=False)
 
 
 @app.callback()
-def callback(
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO",
-):
-    level = getattr(logging, log_level)
-    if log_level == "DEBUG":
-        logging.basicConfig(level=level, format="%(levelname)s:%(name)s:%(message)s")
-    else:
-        logging.getLogger("httpx").setLevel(logging.WARNING)
-        logging.basicConfig(level=level, format="%(message)s")
+def callback(log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"):
+    from icft.logging import logger
+
+    logger.setLevel(log_level)
 
 
 @app.command()
@@ -78,9 +66,12 @@ def prompt_tune(
 
 @app.command()
 def collect_metrics():
-    import os
     import json
+    import os
+
     import polars as pl
+
+    from icft.logging import logger
 
     records = []
     for run in os.listdir("out"):
@@ -90,12 +81,13 @@ def collect_metrics():
 
         with open(path) as f:
             res = json.load(f)
-            res["run"] = run
-            records.append(res)
 
-    out = "out/test_results.csv"
+        res["run_name"] = run
+        records.append(res)
+
+    out = "out/test_results.json"
     df = pl.from_dicts(records)
-    df.write_csv(out)
+    df.write_json(out)
 
     logger.info(df)
     logger.info("saved to '%s'", out)

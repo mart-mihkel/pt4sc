@@ -1,20 +1,18 @@
-import logging
 from typing import Callable
 
 from torch.nn import Module
 from transformers import (
     DataCollator,
-    PreTrainedTokenizerFast,
     DataCollatorForSeq2Seq,
     DataCollatorWithPadding,
+    PreTrainedTokenizerFast,
 )
 from transformers.trainer import Trainer
 from transformers.training_args import TrainingArguments
 
 from icft.datasets.multinerd import Multinerd
-from icft.types import ICFTTask, ICFTDataset, PromptMode
-
-logger = logging.getLogger(__name__)
+from icft.logging import logger
+from icft.types import ICFTDataset, ICFTTask, PromptMode
 
 
 def init_data(

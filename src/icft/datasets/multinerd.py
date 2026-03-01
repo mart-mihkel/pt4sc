@@ -1,4 +1,3 @@
-import logging
 from typing import Iterable, Literal, TypedDict, cast
 
 import numpy as np
@@ -7,9 +6,8 @@ from datasets.utils.info_utils import VerificationMode
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from transformers import BatchEncoding, EvalPrediction, PreTrainedTokenizerFast
 
+from icft.logging import logger
 from icft.types import ICFTTask, PromptMode
-
-logger = logging.getLogger(__name__)
 
 type MultinerdLang = Literal[
     "zh",
@@ -160,12 +158,19 @@ Answer: LOC
 
         self.random_tokens = self._randomize_system_prompt()
 
+        logger.debug(
+            "prepared multinerd system prompt with %d tokens",
+            len(self.system_tokens["input_ids"]),
+        )
+
         train, eval, test = load_dataset(
             "Babelscape/multinerd",
             split=split,
             verification_mode=VerificationMode.NO_CHECKS,
         )
+
         if filter_english:
+            logger.debug("filter multinerd english")
             train = train.filter(self._filter_english, batched=True)
             eval = eval.filter(self._filter_english, batched=True)
             test = test.filter(self._filter_english, batched=True)
@@ -176,6 +181,8 @@ Answer: LOC
             tokenize_fn = self._tokenize_seq_cls
         else:
             raise NotImplementedError(f"Task '{task}'")
+
+        logger.debug("tokenize multinerd for %s", task)
 
         self.train = train.map(
             tokenize_fn,

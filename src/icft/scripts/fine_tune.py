@@ -1,4 +1,3 @@
-import logging
 from typing import cast
 
 from torch.nn import Module
@@ -9,10 +8,9 @@ from transformers import (
 )
 from transformers.models.auto.modeling_auto import AutoModelForSequenceClassification
 
-from icft.common import ICFTDataset, PromptMode, ICFTTask, freeze, init_data, train
+from icft.common import ICFTDataset, ICFTTask, PromptMode, freeze, init_data, train
 from icft.datasets.multinerd import Multinerd
-
-logger = logging.getLogger(__name__)
+from icft.logging import logger
 
 
 def _init_model(
@@ -23,11 +21,13 @@ def _init_model(
     model_path: str,
 ) -> Module:
     if task == "seq2seq":
+        logger.debug("load seq2seq pretrained model")
         model, info = AutoModelForSeq2SeqLM.from_pretrained(
             model_path,
             output_loading_info=True,
         )
     elif task == "seq-cls":
+        logger.debug("load seq-cls pretrained model")
         model, info = AutoModelForSequenceClassification.from_pretrained(
             model_path,
             output_loading_info=True,
@@ -85,7 +85,7 @@ def main(
 
     logger.info("")
     logger.info("Thing         | %-36s |", "Value")
-    logger.info("--------------+-" + 36 * "-" + "-+-")
+    logger.info("--------------+-" + 36 * "-" + "-+")
     logger.info("model         | %-36s |", model_path)
     logger.info("params        | %-36d |", total)
     logger.info("trainable     | %-36d |", trainable)

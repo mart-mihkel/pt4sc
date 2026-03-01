@@ -1,4 +1,3 @@
-import logging
 from typing import Literal
 
 import torch
@@ -12,8 +11,6 @@ from transformers import (
     PreTrainedModel,
 )
 from transformers.modeling_outputs import Seq2SeqModelOutput, SequenceClassifierOutput
-
-logger = logging.getLogger(__name__)
 
 
 class PTModelConfig(PretrainedConfig):

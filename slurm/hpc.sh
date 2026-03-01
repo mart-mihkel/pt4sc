@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#SBATCH --job-name="icft"
-#SBATCH --output=out/slurm/icft-%j.out
+#SBATCH --job-name="t5-large"
+#SBATCH --output=out/slurm/%x-%j.out
 #SBATCH --time=96:00:00
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
@@ -26,6 +26,7 @@ BASE=google-t5/t5-large
 
 MODEL_NAME=$(echo $BASE | awk -F / '{print $2}')
 DATASET=multinerd
+LOG_LEVEL=DEBUG
 TASK=seq2seq
 
 BATCH_SIZE=8
@@ -35,28 +36,28 @@ EPOCHS=1
 make install
 
 # fine-tune
-uv run cli.py fine-tune \
+uv run cli.py --log-level $LOG_LEVEL fine-tune \
     --task $TASK --dataset $DATASET --system-prompt none --no-head-only \
     --model $BASE --run-name ft-none-$DATASET-$MODEL_NAME \
     --epochs $EPOCHS --batch-size $BATCH_SIZE --workers $WORKERS
 
-uv run cli.py fine-tune \
+uv run cli.py --log-level $LOG_LEVEL fine-tune \
     --task $TASK --dataset $DATASET --system-prompt ner --no-head-only \
     --model $BASE --run-name ft-ner-$DATASET-$MODEL_NAME \
     --epochs $EPOCHS --batch-size $BATCH_SIZE --workers $WORKERS
 
-uv run cli.py fine-tune \
+uv run cli.py --log-level $LOG_LEVEL fine-tune \
     --task $TASK --dataset $DATASET --system-prompt random --no-head-only \
     --model $BASE --run-name ft-random-$DATASET-$MODEL_NAME \
     --epochs $EPOCHS --batch-size $BATCH_SIZE --workers $WORKERS
 
 # prompt-tune
-uv run cli.py prompt-tune \
+uv run cli.py --log-level $LOG_LEVEL prompt-tune \
     --task $TASK --dataset $DATASET --prefix-init pretrained \
     --model $BASE --run-name pt-pretrained-$DATASET-$MODEL_NAME \
     --epochs $EPOCHS --batch-size $BATCH_SIZE --workers $WORKERS
 
-uv run cli.py prompt-tune \
+uv run cli.py --log-level $LOG_LEVEL prompt-tune \
     --task $TASK --dataset $DATASET --prefix-init random \
     --model $BASE --run-name pt-random-$DATASET-$MODEL_NAME \
     --epochs $EPOCHS --batch-size $BATCH_SIZE --workers $WORKERS
