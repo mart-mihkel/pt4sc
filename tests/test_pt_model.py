@@ -1,14 +1,8 @@
 from typing import cast
 
-import pytest
-from transformers import (
-    AutoTokenizer,
-    DataCollatorForLanguageModeling,
-    DataCollatorForSeq2Seq,
-    DataCollatorWithPadding,
-    PreTrainedTokenizerFast,
-)
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
+from icft.common import init_collate_fn
 from icft.datasets.multinerd import Multinerd
 from icft.models.pt import PTModel, PTModelConfig
 from icft.scripts.prompt_tune import _init_pt_model
@@ -63,8 +57,8 @@ def test_pt_bert():
     )
 
     model = PTModel(config=config)
-    collator = DataCollatorWithPadding(tokenizer=tokenizer)
-    out = model(**collator(data))
+    collate_fn = init_collate_fn(tokenizer=tokenizer, task="seq-cls")
+    out = model(**collate_fn(data))
 
     assert out.loss is not None
     assert out.logits is not None
@@ -78,29 +72,27 @@ def test_pt_gpt2():
 
     eos = tokenizer.eos_token_id
     data = [
-        {"input_ids": [1, 2], "label": [-100, -100, 3, eos]},
-        {"input_ids": [3], "label": [-100, 4, eos]},
+        {"input_ids": [1, 2, 3, eos], "labels": [-100, -100, 3, eos]},
+        {"input_ids": [3, 4, eos], "labels": [-100, 4, eos]},
     ]
 
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    # TODO: implement
-    with pytest.raises(NotImplementedError):
-        config = PTModelConfig(
-            task="causal-lm",
-            pretrained_model="openai-community/gpt2",
-            num_virtual_tokens=10,
-            num_labels=2,
-        )
+    config = PTModelConfig(
+        task="causal-lm",
+        pretrained_model="openai-community/gpt2",
+        num_virtual_tokens=10,
+        num_labels=2,
+    )
 
-        model = PTModel(config=config)
-        model.base.config.pad_token_id = tokenizer.eos_token_id
-        collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-        out = model(**collator(data))
+    model = PTModel(config=config)
+    model.base.config.pad_token_id = tokenizer.eos_token_id
+    collate_fn = init_collate_fn(tokenizer=tokenizer, task="causal-lm")
+    out = model(**collate_fn(data))
 
-        assert out.loss is not None
-        assert out.logits is not None
+    assert out.loss is not None
+    assert out.logits is not None
 
 
 def test_pt_t5():
@@ -123,8 +115,8 @@ def test_pt_t5():
 
     model = PTModel(config=config)
     model.base.config.pad_token_id = tokenizer.eos_token_id
-    collator = DataCollatorForSeq2Seq(tokenizer=tokenizer)
-    out = model(**collator(data))
+    collate_fn = init_collate_fn(tokenizer=tokenizer, task="seq2seq")
+    out = model(**collate_fn(data))
 
     assert out.loss is not None
     assert out.logits is not None

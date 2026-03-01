@@ -2,13 +2,22 @@ from typing import cast
 
 from torch.nn import Module
 from transformers import (
+    AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
     PreTrainedTokenizerFast,
 )
 from transformers.models.auto.modeling_auto import AutoModelForSequenceClassification
 
-from icft.common import ICFTDataset, ICFTTask, PromptMode, freeze, init_data, train
+from icft.common import (
+    ICFTDataset,
+    ICFTTask,
+    PromptMode,
+    freeze,
+    init_data,
+    train,
+    init_collate_fn,
+)
 from icft.datasets.multinerd import Multinerd
 from icft.logging import logger
 
@@ -35,6 +44,14 @@ def _init_model(
             id2label=data.ID2TAG,
             label2id=data.TAG2ID,
         )
+    elif task == "causal-lm":
+        logger.debug("load causal-lm pretrained model")
+        res = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            output_loading_info=True,
+        )
+
+        model, info = cast(tuple, res)
     else:
         raise NotImplementedError(f"Task '{task}'")
 
@@ -64,7 +81,7 @@ def main(
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    data, compute_metrics, collator = init_data(
+    data, metrics_fn = init_data(
         tokenizer=tokenizer,
         task=task,
         dataset=dataset,
@@ -102,8 +119,8 @@ def main(
     train(
         model=model,
         data=data,
-        collator=collator,
-        compute_metrics=compute_metrics,
+        collate_fn=init_collate_fn(tokenizer=tokenizer, task=task),
+        metrics_fn=metrics_fn,
         run_name=run_name,
         epochs=epochs,
         batch_size=batch_size,

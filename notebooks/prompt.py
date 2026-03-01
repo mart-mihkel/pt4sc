@@ -14,9 +14,21 @@ def _():
 
 
 @app.cell
-def _(AutoTokenizer, Multinerd):
-    tokenizer = AutoTokenizer.from_pretrained("jhu-clsp/mmBERT-base")
-    task = "seq-cls"
+def _():
+    # task = "seq-cls"
+    # pretrained_model = "jhu-clsp/mmBERT-base"
+
+    # task = "seq2seq"
+    # pretrained_model = "google-t5/t5-small"
+
+    task = "causal-lm"
+    pretrained_model = "openai-community/gpt2"
+    return pretrained_model, task
+
+
+@app.cell
+def _(AutoTokenizer, Multinerd, pretrained_model, task):
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
 
     enc_ner = Multinerd(
         tokenizer=tokenizer,
@@ -47,24 +59,21 @@ def _(AutoTokenizer, Multinerd):
 @app.cell
 def _(enc_ner, tokenizer):
     print(tokenizer.decode(enc_ner["input_ids"]))
-    print()
-    print("Label: ", enc_ner["labels"])
+    print("\nLabel: ", enc_ner["labels"])
     return
 
 
 @app.cell
 def _(enc_random, tokenizer):
     print(tokenizer.decode(enc_random["input_ids"]))
-    print()
-    print("Label: ", enc_random["labels"])
+    print("\nLabel: ", enc_random["labels"])
     return
 
 
 @app.cell
 def _(enc_none, tokenizer):
     print(tokenizer.decode(enc_none["input_ids"]))
-    print()
-    print("Label: ", enc_none["labels"])
+    print("\nLabel: ", enc_none["labels"])
     return
 
 

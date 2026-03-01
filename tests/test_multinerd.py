@@ -21,13 +21,17 @@ def test_multinerd_mmbert():
         AutoTokenizer.from_pretrained("jhu-clsp/mmBERT-base"),
     )
 
-    Multinerd(
+    data = Multinerd(
         tokenizer=tokenizer,
         task="seq-cls",
         system_prompt_mode="ner",
         split=["train[:10]", "validation[:10]", "test[:10]"],
         filter_english=False,
     )
+
+    assert len(data.train) > 0
+    assert len(data.eval) > 0
+    assert len(data.test) > 0
 
 
 def test_multinerd_gpt2():
@@ -39,13 +43,17 @@ def test_multinerd_gpt2():
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    Multinerd(
+    data = Multinerd(
         tokenizer=tokenizer,
-        task="seq2seq",  # TODO: causal lm
+        task="causal-lm",
         system_prompt_mode="ner",
         split=["train[:10]", "validation[:10]", "test[:10]"],
         filter_english=False,
     )
+
+    assert len(data.train) > 0
+    assert len(data.eval) > 0
+    assert len(data.test) > 0
 
 
 def test_multinerd_t5():
@@ -54,10 +62,14 @@ def test_multinerd_t5():
         AutoTokenizer.from_pretrained("google-t5/t5-small"),
     )
 
-    Multinerd(
+    data = Multinerd(
         tokenizer=tokenizer,
         task="seq2seq",
         system_prompt_mode="ner",
         split=["train[:10]", "validation[:10]", "test[:10]"],
         filter_english=False,
     )
+
+    assert len(data.train) > 0
+    assert len(data.eval) > 0
+    assert len(data.test) > 0

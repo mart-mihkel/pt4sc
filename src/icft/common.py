@@ -1,5 +1,6 @@
-from typing import Callable
+from typing import Any, Callable
 
+import torch
 from torch.nn import Module
 from transformers import (
     DataCollator,
@@ -15,13 +16,45 @@ from icft.logging import logger
 from icft.types import ICFTDataset, ICFTTask, PromptMode
 
 
+def init_collate_fn(tokenizer: PreTrainedTokenizerFast, task: ICFTTask) -> DataCollator:
+    _padding_collate_fn = DataCollatorWithPadding(
+        tokenizer=tokenizer,
+        pad_to_multiple_of=8,
+    )
+
+    def _causal_lm_collate_fn(features: list[dict[str, Any]]) -> dict[str, Any]:
+        labels = [torch.tensor(f["labels"]) for f in features]
+        no_labels = [{k: v for k, v in f.items() if k != "labels"} for f in features]
+
+        out_features = _padding_collate_fn(no_labels)
+        input_len = out_features["input_ids"].size(1)
+
+        padded_labels = []
+        for label in labels:
+            pad_len = input_len - label.size(0)
+            padded = torch.cat([label, torch.full((pad_len,), -100)])
+            padded_labels.append(padded)
+
+        out_features["labels"] = torch.stack(padded_labels)
+        return out_features
+
+    if task == "seq2seq":
+        return DataCollatorForSeq2Seq(tokenizer=tokenizer, pad_to_multiple_of=8)
+    elif task == "seq-cls":
+        return _padding_collate_fn
+    elif task == "causal-lm":
+        return _causal_lm_collate_fn
+    else:
+        raise NotImplementedError(f"Task '{task}'")
+
+
 def init_data(
     tokenizer: PreTrainedTokenizerFast,
     task: ICFTTask,
     dataset: ICFTDataset,
     system_prompt: PromptMode,
     workers: int,
-) -> tuple[Multinerd, Callable, DataCollator]:
+) -> tuple[Multinerd, Callable]:
     if dataset == "multinerd":
         logger.debug("init multinerd")
         data = Multinerd(
@@ -34,15 +67,15 @@ def init_data(
         raise NotImplementedError(f"Dataset '{dataset}'")
 
     if task == "seq2seq":
-        collator = DataCollatorForSeq2Seq(tokenizer=tokenizer)
-        compute_metrics = data.compute_metrics_seq_cls  # TODO: seq2seq metrics
+        metrics_fn = data.compute_metrics_seq_cls  # TODO: seq2seq metrics
     elif task == "seq-cls":
-        collator = DataCollatorWithPadding(tokenizer=tokenizer)
-        compute_metrics = data.compute_metrics_seq_cls
+        metrics_fn = data.compute_metrics_seq_cls
+    elif task == "causal-lm":
+        metrics_fn = data.compute_metrics_seq_cls  # TODO: causal-lm metrics
     else:
         raise NotImplementedError(f"Task '{task}'")
 
-    return data, compute_metrics, collator
+    return data, metrics_fn
 
 
 def freeze(model: Module, skip: set[str]):
@@ -58,8 +91,8 @@ def freeze(model: Module, skip: set[str]):
 def train(
     model: Module,
     data: Multinerd,
-    collator: DataCollator,
-    compute_metrics: Callable,
+    collate_fn: DataCollator,
+    metrics_fn: Callable,
     run_name: str,
     epochs: int,
     batch_size: int,
@@ -89,8 +122,8 @@ def train(
         args=args,
         train_dataset=data.train,
         eval_dataset=data.eval,
-        data_collator=collator,
-        compute_metrics=compute_metrics,
+        data_collator=collate_fn,
+        compute_metrics=metrics_fn,
     )
 
     trainer.train()

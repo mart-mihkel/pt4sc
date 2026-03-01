@@ -179,6 +179,8 @@ Answer: LOC
             tokenize_fn = self._tokenize_seq2seq
         elif task == "seq-cls":
             tokenize_fn = self._tokenize_seq_cls
+        elif task == "causal-lm":
+            tokenize_fn = self._tokenize_causal_lm
         else:
             raise NotImplementedError(f"Task '{task}'")
 
@@ -232,14 +234,14 @@ Answer: LOC
         prompts: list[str] = []
         labels: list[int] = []
 
-        for tokens, ids in zip(batch["tokens"], batch["ner_tags"]):
+        for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"]):
             sentence = " ".join(tokens)
-            tokens, ids = self._join_spans(tokens=tokens, ids=ids)
+            tokens, tag_ids = self._join_spans(tokens=tokens, tag_ids=tag_ids)
 
-            for token, id in zip(tokens, ids):
+            for token, tag_id in zip(tokens, tag_ids):
                 prompt = self._prompt_template(sentence=sentence, token=token)
                 prompts.append(prompt)
-                labels.append(id)
+                labels.append(tag_id)
 
         enc = self.tokenizer(prompts, add_special_tokens=False)
         enc["labels"] = labels
@@ -250,20 +252,56 @@ Answer: LOC
         prompts: list[str] = []
         labels: list[str] = []
 
-        for tokens, ids in zip(batch["tokens"], batch["ner_tags"]):
+        for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"]):
             sentence = " ".join(tokens)
-            tokens, ids = self._join_spans(tokens=tokens, ids=ids)
+            tokens, tag_ids = self._join_spans(tokens=tokens, tag_ids=tag_ids)
 
-            for token, id in zip(tokens, ids):
+            for token, tag_id in zip(tokens, tag_ids):
                 prompt = self._prompt_template(sentence=sentence, token=token)
                 prompts.append(prompt)
-                labels.append(f"{self.ID2TAG[id]}{self.tokenizer.eos_token}")
+                labels.append(f"{self.ID2TAG[tag_id]}{self.tokenizer.eos_token}")
 
         prompts_enc = self.tokenizer(prompts, add_special_tokens=False)
         labels_enc = self.tokenizer(labels, add_special_tokens=False)
         prompts_enc["labels"] = labels_enc["input_ids"]
 
         return self._maybe_prepend_system_tokens(enc=prompts_enc)
+
+    def _tokenize_causal_lm(self, batch: MultinerdBatch) -> BatchEncoding:
+        ids: list[list[int]] = []
+        attn: list[list[int]] = []
+        labels: list[list[int]] = []
+
+        for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"]):
+            sentence = " ".join(tokens)
+            tokens, tag_ids = self._join_spans(tokens=tokens, tag_ids=tag_ids)
+
+            for token, tag_id in zip(tokens, tag_ids):
+                prompt = self._prompt_template(sentence=sentence, token=token)
+                answer = f"{self.ID2TAG[tag_id]}{self.tokenizer.eos_token}"
+
+                prompt_enc = self.tokenizer(prompt, add_special_tokens=False)
+                answer_enc = self.tokenizer(answer, add_special_tokens=False)
+
+                prompt_tokens = len(prompt_enc["input_ids"])
+
+                _ids = prompt_enc["input_ids"] + answer_enc["input_ids"]
+                _attn = prompt_enc["attention_mask"] + answer_enc["attention_mask"]
+                _labels = [-100] * prompt_tokens + answer_enc["input_ids"]
+
+                ids.append(_ids)
+                attn.append(_attn)
+                labels.append(_labels)
+
+        enc = BatchEncoding(
+            {
+                "input_ids": ids,
+                "attention_mask": attn,
+                "labels": labels,
+            }
+        )
+
+        return self._maybe_prepend_system_tokens(enc=enc)
 
     def _maybe_prepend_system_tokens(
         self,
@@ -300,11 +338,11 @@ Answer: LOC
     @staticmethod
     def _join_spans(
         tokens: list[str],
-        ids: list[int],
+        tag_ids: list[int],
     ) -> tuple[list[str], list[int]]:
         out_ids = []
         out_tokens = []
-        for token, id in zip(tokens, ids):
+        for token, id in zip(tokens, tag_ids):
             tag = Multinerd._ID2TAG_FULL[id]
 
             if tag.startswith("B-"):

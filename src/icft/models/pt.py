@@ -1,5 +1,3 @@
-from typing import Literal
-
 import torch
 from torch import Tensor
 from torch.nn import Parameter
@@ -9,14 +7,21 @@ from transformers import (
     AutoModelForSequenceClassification,
     PretrainedConfig,
     PreTrainedModel,
+    AutoModelForCausalLM,
 )
-from transformers.modeling_outputs import Seq2SeqModelOutput, SequenceClassifierOutput
+from transformers.modeling_outputs import (
+    Seq2SeqModelOutput,
+    SequenceClassifierOutput,
+    CausalLMOutput,
+)
+
+from icft.types import ICFTTask
 
 
 class PTModelConfig(PretrainedConfig):
     def __init__(
         self,
-        task: Literal["seq2seq", "seq-cls", "causal-lm"] | None = None,
+        task: ICFTTask | None = None,
         num_virtual_tokens: int = 0,
         pretrained_model: str | None = None,
         num_labels: int = 1,
@@ -39,6 +44,7 @@ class PTModel(PreTrainedModel):
     def __init__(self, config: PTModelConfig) -> None:
         super().__init__(config)
 
+        self.config = config
         _config = AutoConfig.from_pretrained(
             config.pretrained_model,
             num_labels=config.num_labels,
@@ -52,6 +58,8 @@ class PTModel(PreTrainedModel):
             base = AutoModelForSeq2SeqLM.from_config(_config)
         elif config.task == "seq-cls":
             base = AutoModelForSequenceClassification.from_config(_config)
+        elif config.task == "causal-lm":
+            base = AutoModelForCausalLM.from_config(_config)
         else:
             raise NotImplementedError(f"task {config.task} is not implemented")
 
@@ -68,7 +76,7 @@ class PTModel(PreTrainedModel):
         input_ids: Tensor,
         attention_mask: Tensor,
         labels: Tensor,
-    ) -> SequenceClassifierOutput | Seq2SeqModelOutput:
+    ) -> SequenceClassifierOutput | Seq2SeqModelOutput | CausalLMOutput:
         batch_size = input_ids.size(0)
         emb = self.base.get_input_embeddings()
 
@@ -83,5 +91,15 @@ class PTModel(PreTrainedModel):
 
         inputs = torch.cat([prefix_emb, prompt_emb], dim=1)
         attn = torch.cat([prefix_attn, attention_mask], dim=1)
+
+        if self.config.task == "causal-lm":
+            prefix_labels = torch.full(
+                (batch_size, self.config.num_virtual_tokens),
+                -100,
+                device=labels.device,
+                dtype=labels.dtype,
+            )
+
+            labels = torch.cat([prefix_labels, labels], dim=1)
 
         return self.base(inputs_embeds=inputs, attention_mask=attn, labels=labels)

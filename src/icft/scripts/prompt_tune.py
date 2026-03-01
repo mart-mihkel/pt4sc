@@ -7,9 +7,10 @@ from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     PreTrainedTokenizerFast,
+    AutoModelForCausalLM,
 )
 
-from icft.common import freeze, init_data, train
+from icft.common import freeze, init_collate_fn, init_data, init_metrics_fn, train
 from icft.datasets.multinerd import Multinerd
 from icft.logging import logger
 from icft.models.pt import PTModel, PTModelConfig
@@ -32,20 +33,18 @@ def _init_pt_model(
             local_files_only=True,
         )
 
-    logger.debug("init base model")
     system_ids = torch.tensor(data.system_tokens["input_ids"])
     if task == "seq2seq":
-        base, info = AutoModelForSeq2SeqLM.from_pretrained(
-            model_path,
-            output_loading_info=True,
-        )
-
+        logger.debug("load base model for seq2seq")
+        base = AutoModelForSeq2SeqLM.from_pretrained(model_path)
+        info = {"missing_keys": set()}
         config = PTModelConfig(
             task=task,
             pretrained_model=model_path,
             num_virtual_tokens=len(system_ids),
         )
     elif task == "seq-cls":
+        logger.debug("load base model for seq-cls")
         base, info = AutoModelForSequenceClassification.from_pretrained(
             model_path,
             output_loading_info=True,
@@ -62,12 +61,24 @@ def _init_pt_model(
             id2label=cast(dict[int, str], data.ID2TAG),
             label2id=cast(dict[str, int], data.TAG2ID),
         )
+    elif task == "causal-lm":
+        logger.debug("load base model for causal-lm")
+        base = AutoModelForCausalLM.from_pretrained(model_path)
+        info = {"missing_keys": set()}
+        config = PTModelConfig(
+            task=task,
+            pretrained_model=model_path,
+            num_virtual_tokens=len(system_ids),
+        )
     else:
         raise NotImplementedError(f"Task '{task}'")
 
     logger.debug("init pt-model")
     model = PTModel(config=config)
+
+    logger.debug("load pretrained weights")
     model.base.load_state_dict(base.state_dict(), strict=False)
+
     freeze(model=model.base, skip=info["missing_keys"])
 
     emb = model.base.get_input_embeddings()
@@ -102,7 +113,7 @@ def main(
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    data, compute_metrics, collator = init_data(
+    data = init_data(
         tokenizer=tokenizer,
         task=task,
         dataset=dataset,
@@ -126,10 +137,10 @@ def main(
     logger.info("Thing          | %-36s |", "Value")
     logger.info("---------------+-" + 36 * "-" + "-+")
     logger.info("model          | %-36s |", model_path)
+    logger.info("virtual tokens | %-36d |", model.prefix.shape[0])
     logger.info("params         | %-36d |", total)
     logger.info("trainable      | %-36d |", trainable)
     logger.info("prefix         | %-36d |", prefix)
-    logger.info("virtual tokens | %-36d |", model.prefix.shape[0])
     logger.info("head           | %-36d |", trainable - prefix)
     logger.info("task           | %-36s |", task)
     logger.info("prompt         | %-36s |", "none")
@@ -144,8 +155,8 @@ def main(
     train(
         model=model,
         data=data,
-        collator=collator,
-        compute_metrics=compute_metrics,
+        collate_fn=init_collate_fn(tokenizer=tokenizer, task=task),
+        metrics_fn=init_metrics_fn(tokenizer=tokenizer, task=task),
         run_name=run_name,
         epochs=epochs,
         batch_size=batch_size,
