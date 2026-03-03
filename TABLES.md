@@ -18,14 +18,14 @@ dataset
 | PT      |    177.6K |   3.9M | 54.0K | 13.2K | 124.8K | 14.7K | 0.1K | 4.2K |  6.8K | 5.9K |  5.4K | 0.6K |  9.1K | 1.6K |  9.2K | 48.6K | 0.3K |  3.4M |
 | ZH      |    195.3K |   5.8M | 68.3K | 20.8K |  49.6K | 26.1K | 0.4K | 0.8K |  0.1K | 5.1K |  1.9K | 1.1K | 55.9K | 1.8K |  6.1K |  0.4K | 0.3K |  3.4M |
 
-English only subset of MultiNERD, multi span entities _B-[tag]_ _I-[tag]_ are
-joined into one _[tag]_
+Modified english only subset of MultiNERD, multi span entities with _B-[TAG]_
+and _I-[TAG]_ are joined into one _[TAG]_.
 
 | Split | Samples |
 | :---- | ------: |
 | Train |    2.6M |
-| Eval  |    358k |
-| Test  |    327k |
+| Eval  |    358K |
+| Test  |    327K |
 
 Prompt template:
 
@@ -37,20 +37,20 @@ Prompt template:
 > Target: Paris<br>
 > Answer: LOC<br>
 > <br>
-> Sentence: [sentence]<br>
-> Target: [word]<br>
+> Sentence: [SENTENCE]<br>
+> Target: [ENTITY]<br>
 > Answer:
 
 **Parameters**
 
 | Model           | Total | Head | Prefix | Tokens |
 | :-------------- | ----: | ---: | -----: | -----: |
-| distilbert-base |   67M | 614k |    28k |     37 |
-| mmBERT-small    |  140M |  11k |        |        |
-| mmBERT-base     |  307M |  23k |        |        |
-| gpt2            |  124M |  23k |        |        |
-| gpt2-medium     |  355M |      |        |        |
-| gpt2-large      |  774M |      |        |        |
-| gpt2-xl         |  1.5B |      |        |        |
-| t5-small        |   60M |  27k |        |        |
-| t5-base         |  220M |      |        |        |
+| DistilBERT-Base |   67M | 602K |    26K |     35 |
+| mmBERT-Small    |  140M |   6K |    14K |     39 |
+| mmBERT-Base     |  307M |  12K |    29K |     39 |
+| GPT2            |  124M |      |        |        |
+| GPT2-Medium     |  355M |      |        |        |
+| GPT2-Large      |  774M |      |        |        |
+| GPT2-XL         |  1.5B |      |        |        |
+| T5-Small        |   60M |      |        |        |
+| T5-Base         |  220M |      |        |        |
