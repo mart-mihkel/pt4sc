@@ -3,8 +3,7 @@ from typing import Iterable, Literal, TypedDict, cast
 import numpy as np
 from datasets.load import load_dataset
 from datasets.utils.info_utils import VerificationMode
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
-from transformers import BatchEncoding, EvalPrediction, PreTrainedTokenizerFast
+from transformers import BatchEncoding, PreTrainedTokenizerFast
 
 from icft.logging import logger
 from icft.types import ICFTTask, PromptMode
@@ -357,17 +356,6 @@ Answer: LOC
                 out_tokens.append(token)
 
         return out_tokens, out_ids
-
-    @staticmethod
-    def compute_metrics_seq_cls(eval_pred: EvalPrediction) -> dict[str, float]:
-        logits, labels = eval_pred
-        preds = np.argmax(logits, axis=-1)
-        return dict(
-            accuracy=accuracy_score(labels, preds),
-            precision=precision_score(labels, preds, average="macro", zero_division=0),
-            recall=recall_score(labels, preds, average="macro"),
-            f1=f1_score(labels, preds, average="macro"),
-        )
 
     @staticmethod
     def _filter_english(batch: MultinerdBatch) -> list[bool]:

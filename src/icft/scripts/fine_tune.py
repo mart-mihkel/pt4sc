@@ -14,9 +14,10 @@ from icft.common import (
     ICFTTask,
     PromptMode,
     freeze,
-    init_data,
-    train,
     init_collate_fn,
+    init_data,
+    init_metrics_fn,
+    train,
 )
 from icft.datasets.multinerd import Multinerd
 from icft.logging import logger
@@ -31,10 +32,8 @@ def _init_model(
 ) -> Module:
     if task == "seq2seq":
         logger.debug("load seq2seq pretrained model")
-        model, info = AutoModelForSeq2SeqLM.from_pretrained(
-            model_path,
-            output_loading_info=True,
-        )
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
+        info = {"missing_keys": set()}
     elif task == "seq-cls":
         logger.debug("load seq-cls pretrained model")
         model, info = AutoModelForSequenceClassification.from_pretrained(
@@ -46,12 +45,8 @@ def _init_model(
         )
     elif task == "causal-lm":
         logger.debug("load causal-lm pretrained model")
-        res = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            output_loading_info=True,
-        )
-
-        model, info = cast(tuple, res)
+        model = AutoModelForCausalLM.from_pretrained(model_path)
+        info = {"missing_keys": set()}
     else:
         raise NotImplementedError(f"Task '{task}'")
 
@@ -81,7 +76,7 @@ def main(
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    data, metrics_fn = init_data(
+    data = init_data(
         tokenizer=tokenizer,
         task=task,
         dataset=dataset,
@@ -100,27 +95,25 @@ def main(
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    logger.info("")
-    logger.info("Thing         | %-36s |", "Value")
-    logger.info("--------------+-" + 36 * "-" + "-+")
-    logger.info("model         | %-36s |", model_path)
-    logger.info("params        | %-36d |", total)
-    logger.info("trainable     | %-36d |", trainable)
-    logger.info("task          | %-36s |", task)
-    logger.info("prompt        | %-36s |", system_prompt)
-    logger.info("dataset       | %-36s |", dataset)
-    logger.info("train samples | %-36d |", len(data.train))
-    logger.info("eval samples  | %-36d |", len(data.eval))
-    logger.info("test samples  | %-36d |", len(data.test))
-    logger.info("batch size    | %-36d |", batch_size)
-    logger.info("epochs        | %-36d |", epochs)
-    logger.info("")
+    logger.info("Thing         | %-24s |", "Value")
+    logger.info("--------------+-" + 24 * "-" + "-+-")
+    logger.info("model         | %-24s |", model_path.split("/")[-1])
+    logger.info("params        | %-24d |", total)
+    logger.info("trainable     | %-24d |", trainable)
+    logger.info("task          | %-24s |", task)
+    logger.info("prompt        | %-24s |", system_prompt)
+    logger.info("dataset       | %-24s |", dataset)
+    logger.info("train samples | %-24d |", len(data.train))
+    logger.info("eval samples  | %-24d |", len(data.eval))
+    logger.info("test samples  | %-24d |", len(data.test))
+    logger.info("batch size    | %-24d |", batch_size)
+    logger.info("epochs        | %-24d |", epochs)
 
     train(
         model=model,
         data=data,
         collate_fn=init_collate_fn(tokenizer=tokenizer, task=task),
-        metrics_fn=metrics_fn,
+        metrics_fn=init_metrics_fn(tokenizer=tokenizer, task=task),
         run_name=run_name,
         epochs=epochs,
         batch_size=batch_size,

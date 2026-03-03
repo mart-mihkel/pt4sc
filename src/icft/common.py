@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Callable
 
 import torch
@@ -6,6 +7,7 @@ from transformers import (
     DataCollator,
     DataCollatorForSeq2Seq,
     DataCollatorWithPadding,
+    EvalPrediction,
     PreTrainedTokenizerFast,
 )
 from transformers.trainer import Trainer
@@ -13,6 +15,11 @@ from transformers.training_args import TrainingArguments
 
 from icft.datasets.multinerd import Multinerd
 from icft.logging import logger
+from icft.metrics import (
+    compute_metrics_causal_lm,
+    compute_metrics_seq2seq,
+    compute_metrics_seq_cls,
+)
 from icft.types import ICFTDataset, ICFTTask, PromptMode
 
 
@@ -48,13 +55,33 @@ def init_collate_fn(tokenizer: PreTrainedTokenizerFast, task: ICFTTask) -> DataC
         raise NotImplementedError(f"Task '{task}'")
 
 
+def init_metrics_fn(
+    task: ICFTTask,
+    tokenizer: PreTrainedTokenizerFast | None = None,
+) -> Callable[[EvalPrediction], dict[str, int | float]]:
+    if task == "seq2seq":
+        if tokenizer is None:
+            raise ValueError("Tokenizer required for seq2seq metrics")
+
+        return partial(compute_metrics_seq2seq, tokenizer=tokenizer)
+    elif task == "seq-cls":
+        return compute_metrics_seq_cls
+    elif task == "causal-lm":
+        if tokenizer is None:
+            raise ValueError("Tokenizer required for causal-lm metrics")
+
+        return partial(compute_metrics_causal_lm, tokenizer=tokenizer)
+    else:
+        raise NotImplementedError(f"Task '{task}'")
+
+
 def init_data(
     tokenizer: PreTrainedTokenizerFast,
     task: ICFTTask,
     dataset: ICFTDataset,
     system_prompt: PromptMode,
     workers: int,
-) -> tuple[Multinerd, Callable]:
+) -> Multinerd:
     if dataset == "multinerd":
         logger.debug("init multinerd")
         data = Multinerd(
@@ -66,16 +93,7 @@ def init_data(
     else:
         raise NotImplementedError(f"Dataset '{dataset}'")
 
-    if task == "seq2seq":
-        metrics_fn = data.compute_metrics_seq_cls  # TODO: seq2seq metrics
-    elif task == "seq-cls":
-        metrics_fn = data.compute_metrics_seq_cls
-    elif task == "causal-lm":
-        metrics_fn = data.compute_metrics_seq_cls  # TODO: causal-lm metrics
-    else:
-        raise NotImplementedError(f"Task '{task}'")
-
-    return data, metrics_fn
+    return data
 
 
 def freeze(model: Module, skip: set[str]):
@@ -98,6 +116,7 @@ def train(
     batch_size: int,
 ):
     logger.debug("init trainer")
+
     steps_per_epoch = len(data.train) // (batch_size * epochs)
     args = TrainingArguments(
         project="icft",
