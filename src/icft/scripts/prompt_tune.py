@@ -34,6 +34,8 @@ def _init_pt_model(
         )
 
     system_ids = torch.tensor(data.system_prompt_tokens["input_ids"])
+    num_virtual_tokens = len(system_ids)
+
     if task == "seq2seq":
         logger.debug("load seq2seq base model %s", model_path)
         base = AutoModelForSeq2SeqLM.from_pretrained(model_path)
@@ -41,7 +43,7 @@ def _init_pt_model(
         config = PTModelConfig(
             task=task,
             pretrained_model=model_path,
-            num_virtual_tokens=len(system_ids),
+            num_virtual_tokens=num_virtual_tokens,
         )
     elif task == "seq-cls":
         logger.debug("load seq-cls base model %s", model_path)
@@ -56,7 +58,7 @@ def _init_pt_model(
         config = PTModelConfig(
             task=task,
             pretrained_model=model_path,
-            num_virtual_tokens=len(system_ids),
+            num_virtual_tokens=num_virtual_tokens,
             num_labels=len(data.ID2TAG),
             id2label=cast(dict[int, str], data.ID2TAG),
             label2id=cast(dict[str, int], data.TAG2ID),
@@ -68,7 +70,7 @@ def _init_pt_model(
         config = PTModelConfig(
             task=task,
             pretrained_model=model_path,
-            num_virtual_tokens=len(system_ids),
+            num_virtual_tokens=num_virtual_tokens,
         )
     else:
         raise NotImplementedError(f"Task '{task}'")
@@ -83,10 +85,10 @@ def _init_pt_model(
 
     emb = model.base.get_input_embeddings()
     if prefix_init == "random":
-        logger.debug("init random prefix with %d tokens", len(system_ids))
-        model.prefix = Parameter(torch.randn(1, len(system_ids), emb.embedding_dim))
+        logger.debug("init random prefix with %d tokens", num_virtual_tokens)
+        model.prefix = Parameter(torch.randn(1, num_virtual_tokens, emb.embedding_dim))
     elif prefix_init == "pretrained":
-        logger.debug("init pretrained prefix with %d tokens", len(system_ids))
+        logger.debug("init pretrained prefix with %d tokens", num_virtual_tokens)
         model.prefix = Parameter(emb(system_ids).detach())
     else:
         raise NotImplementedError(f"Prefix init '{prefix_init}'")
@@ -152,7 +154,6 @@ def main(
     logger.info("batch size     | %-24d |", batch_size)
     logger.info("epochs         | %-24d |", epochs)
 
-    logger.debug("init trainer")
     train(
         model=model,
         data=data,

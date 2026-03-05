@@ -117,27 +117,31 @@ def train(
     batch_size: int,
     grad_chkpts: bool,
 ):
-    steps_per_epoch = len(data.train) // (batch_size * epochs)
-    gradient_accumulation_steps = max(1, ceil(64 / batch_size))
     have_cuda = torch.cuda.is_available()
+    optim = "adamw_8bit" if have_cuda else "adamw_torch_fused"
+    gradient_accumulation_steps = max(1, ceil(64 / batch_size))
+    effective_batch_size = batch_size * gradient_accumulation_steps
+    total_train_steps = ceil(len(data.train) / effective_batch_size) * epochs
+    eval_steps = max(1, total_train_steps // 5)
+    logging_steps = max(1, total_train_steps // 100)
 
+    logger.debug("init trainer")
     logger.debug("%shave CUDA", "" if have_cuda else "don't ")
     logger.debug("using %d gradient accumulation steps", gradient_accumulation_steps)
     logger.debug("%susing gradient checkpointing", "" if grad_chkpts else "not ")
-    logger.debug("effective batch size %d", gradient_accumulation_steps * batch_size)
+    logger.debug("effective batch size %d", effective_batch_size)
+    logger.debug("logging steps %d", logging_steps)
+    logger.debug("eval steps %d", eval_steps)
 
     args = TrainingArguments(
-        project="icft",
         run_name=run_name,
-        report_to="trackio",
-        trackio_space_id=None,
+        report_to="mlflow",
         output_dir=f"out/{run_name}",
-        remove_unused_columns=False,
         save_strategy="epoch",
         eval_strategy="steps",
-        eval_steps=steps_per_epoch // 5,
-        logging_steps=steps_per_epoch // 100,
-        optim="adamw_8bit" if have_cuda else "adamw_torch_fused",
+        eval_steps=eval_steps,
+        logging_steps=logging_steps,
+        optim=optim,
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size * 4,

@@ -1,6 +1,6 @@
 {
   pkgs ? import <nixpkgs> {},
-  run ? "bash",
+  run ? "zsh",
 }: let
   fhs = pkgs.buildFHSEnv {
     name = "fhs-shell";

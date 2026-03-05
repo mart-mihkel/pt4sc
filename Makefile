@@ -1,7 +1,4 @@
-HF_CACHE = ~/.cache/huggingface
-DOC_VIEWER = zathura
-REMOTE_HOST ?=
-REMOTE_DIR ?=
+REMOTE ?=
 
 install:
 	uv sync
@@ -15,17 +12,17 @@ pre-commit:
 marimo:
 	uv run marimo edit notebooks
 
-trackio:
-	uv run trackio show --project icft
+mlflow:
+	uv run mlflow server
 
 typst:
-	typst watch typesetting/main.typ --open $(DOC_VIEWER)
+	typst watch typesetting/main.typ --open zathura
 
 upload:
-	rsync -rv --exclude-from '.gitignore' . $(REMOTE_HOST):$(REMOTE_DIR)
+	rsync -rv --exclude-from '.gitignore' . $(REMOTE)
 
 download-out:
-	rsync -rv $(REMOTE_HOST):$(REMOTE_DIR)/out .
+	rsync -rv $(REMOTE)/out .
 
 download-log:
-	rsync -rv $(REMOTE_HOST):$(HF_CACHE)/trackio $(HF_CACHE)
+	rsync -rv $(REMOTE)/mlflow.db .

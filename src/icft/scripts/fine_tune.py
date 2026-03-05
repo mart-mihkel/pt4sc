@@ -110,7 +110,6 @@ def main(
     logger.info("batch size    | %-24d |", batch_size)
     logger.info("epochs        | %-24d |", epochs)
 
-    logger.debug("init trainer")
     train(
         model=model,
         data=data,
