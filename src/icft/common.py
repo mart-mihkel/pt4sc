@@ -149,6 +149,8 @@ def train(
         gradient_checkpointing=grad_chkpts,
         bf16_full_eval=have_cuda,
         bf16=have_cuda,
+        fp16_full_eval=not have_cuda,
+        fp16=not have_cuda,
     )
 
     trainer = Trainer(
