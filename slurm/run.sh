@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-#SBATCH --job-name="mmbert-base"
+#SBATCH --job-name="gpt2"
 #SBATCH --output=out/slurm/%x-%j.out
-#SBATCH --partition=main
+#SBATCH --time=96:00:00
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --mem=16GB
 
 set -euo pipefail
 mkdir -p out
@@ -32,31 +35,33 @@ WORKERS=16
 EPOCHS=1
 LR=1e-4
 
-nix-shell --argstr run "make install"
+make install
 
 # fine-tune
-nix-shell --argstr run "uv run cli.py --log-level $LOG_LEVEL fine-tune \
+uv run cli.py --log-level $LOG_LEVEL fine-tune \
     --task $TASK --dataset $DATASET --system-prompt none --no-head-only \
     --model $BASE --run-name ft-none-$DATASET-$MODEL_NAME \
-    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS"
+    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
 
-nix-shell --argstr run "uv run cli.py --log-level $LOG_LEVEL fine-tune \
+uv run cli.py --log-level $LOG_LEVEL fine-tune \
     --task $TASK --dataset $DATASET --system-prompt ner --no-head-only \
     --model $BASE --run-name ft-ner-$DATASET-$MODEL_NAME \
-    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS"
+    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
 
-nix-shell --argstr run "uv run cli.py --log-level $LOG_LEVEL fine-tune \
+uv run cli.py --log-level $LOG_LEVEL fine-tune \
     --task $TASK --dataset $DATASET --system-prompt random --no-head-only \
     --model $BASE --run-name ft-random-$DATASET-$MODEL_NAME \
-    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS"
+    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
+
+LR=1e-3
 
 # prompt-tune
-nix-shell --argstr run "uv run cli.py --log-level $LOG_LEVEL prompt-tune \
+uv run cli.py --log-level $LOG_LEVEL prompt-tune \
     --task $TASK --dataset $DATASET --prefix-init pretrained \
     --model $BASE --run-name pt-pretrained-$DATASET-$MODEL_NAME \
-    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS" 
+    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
 
-nix-shell --argstr run "uv run cli.py --log-level $LOG_LEVEL prompt-tune \
+uv run cli.py --log-level $LOG_LEVEL prompt-tune \
     --task $TASK --dataset $DATASET --prefix-init random \
     --model $BASE --run-name pt-random-$DATASET-$MODEL_NAME \
-    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS"
+    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
