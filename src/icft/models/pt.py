@@ -19,6 +19,8 @@ from icft.types import ICFTTask
 
 
 class PTModelConfig(PretrainedConfig):
+    model_type = "pt"
+
     def __init__(
         self,
         task: ICFTTask | None = None,
