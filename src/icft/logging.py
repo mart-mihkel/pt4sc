@@ -5,12 +5,13 @@ import datasets
 import httpx
 import torch
 import transformers
+import accelerate
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.traceback import Traceback, install
 
 _console = Console(force_terminal=True)
-_suppress = [transformers, datasets, torch, httpx]
+_suppress = [transformers, datasets, torch, accelerate, httpx]
 _handler = RichHandler(
     console=_console,
     markup=True,
