@@ -72,34 +72,5 @@ def prompt_tune(
     )
 
 
-@app.command()
-def collect_metrics():
-    import json
-    import os
-
-    import polars as pl
-
-    from icft.logging import logger
-
-    records = []
-    for run in os.listdir("out"):
-        path = f"out/{run}/test_results.json"
-        if not os.path.exists(path):
-            continue
-
-        with open(path) as f:
-            res = json.load(f)
-
-        res["run_name"] = run
-        records.append(res)
-
-    out = "out/test_results.json"
-    df = pl.from_dicts(records)
-    df.write_json(out)
-
-    logger.info(df)
-    logger.info("saved to '%s'", out)
-
-
 if __name__ == "__main__":
     app()

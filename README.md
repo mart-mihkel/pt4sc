@@ -2,9 +2,10 @@
 
 ## Development
 
-Use [uv](https://docs.astral.sh/uv/) for package management and [typst](https://typst.app/) for typesetting.
+Use [uv](https://docs.astral.sh/uv/) for package management.
 
-Run `make install` to setup a local venv, see [Makefile](./Makefile) for other development commands.
+Run `make install` to setup a local envrionment, see [Makefile](./Makefile) for
+other development commands.
 
 ## Usage
 
