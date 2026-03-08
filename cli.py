@@ -111,5 +111,13 @@ def prompt_tune(
     )
 
 
+@app.command()
+@timed
+def predict(checkpoint: Annotated[str, Option()], workers: int = 4):
+    from icft.scripts.predict import main
+
+    main(checkpoint=checkpoint, workers=workers)
+
+
 if __name__ == "__main__":
     app()
