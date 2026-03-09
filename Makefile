@@ -1,9 +1,5 @@
 REMOTE ?=
 
-install:
-	uv sync
-	uv pip install --editable .
-
 pre-commit:
 	uv run ruff check --fix
 	uv run ruff format

@@ -14,6 +14,7 @@ from transformers import (
 from transformers.trainer import Trainer
 from transformers.training_args import TrainingArguments
 
+from icft.datasets import Dataset
 from icft.datasets.multinerd import Multinerd
 from icft.logging import logger
 from icft.metrics import (
@@ -21,7 +22,7 @@ from icft.metrics import (
     compute_metrics_seq2seq,
     compute_metrics_seq_cls,
 )
-from icft.types import ICFTDataset, ICFTTask, PromptMode
+from icft.types import ICFTDataset, ICFTPrompt, ICFTTask
 
 
 def init_collate_fn(tokenizer: PreTrainedTokenizerFast, task: ICFTTask) -> DataCollator:
@@ -80,14 +81,14 @@ def init_data(
     tokenizer: PreTrainedTokenizerFast,
     task: ICFTTask,
     dataset: ICFTDataset,
-    system_prompt: PromptMode,
+    system_prompt: ICFTPrompt,
     workers: int,
-) -> Multinerd:
+) -> Dataset:
     logger.debug("init %s dataset", dataset)
     if dataset == "multinerd":
         data = Multinerd(
             tokenizer=tokenizer,
-            system_prompt_mode=system_prompt,
+            system_prompt=system_prompt,
             task=task,
             workers=workers,
         )
@@ -109,7 +110,7 @@ def freeze(model: Module, skip: set[str]):
 
 def train(
     model: Module,
-    data: Multinerd,
+    data: Dataset,
     collate_fn: DataCollator,
     metrics_fn: Callable,
     run_name: str,

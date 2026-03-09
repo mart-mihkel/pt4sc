@@ -24,9 +24,9 @@ def test_multinerd_mmbert():
     data = Multinerd(
         tokenizer=tokenizer,
         task="seq-cls",
-        system_prompt_mode="ner",
+        system_prompt="system",
         split=["train[:10]", "validation[:10]", "test[:10]"],
-        filter_english=False,
+        filter_en=False,
     )
 
     assert len(data.train) > 0
@@ -46,9 +46,9 @@ def test_multinerd_gpt2():
     data = Multinerd(
         tokenizer=tokenizer,
         task="causal-lm",
-        system_prompt_mode="ner",
+        system_prompt="system",
         split=["train[:10]", "validation[:10]", "test[:10]"],
-        filter_english=False,
+        filter_en=False,
     )
 
     assert len(data.train) > 0
@@ -65,9 +65,9 @@ def test_multinerd_t5():
     data = Multinerd(
         tokenizer=tokenizer,
         task="seq2seq",
-        system_prompt_mode="ner",
+        system_prompt="system",
         split=["train[:10]", "validation[:10]", "test[:10]"],
-        filter_english=False,
+        filter_en=False,
     )
 
     assert len(data.train) > 0

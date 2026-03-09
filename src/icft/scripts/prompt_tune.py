@@ -11,7 +11,7 @@ from transformers import (
 )
 
 from icft.common import freeze, init_collate_fn, init_data, init_metrics_fn, train
-from icft.datasets.multinerd import Multinerd
+from icft.datasets import Dataset
 from icft.logging import logger
 from icft.models import PTModel, PTModelConfig
 from icft.models.gpt2 import PTGPT2Model
@@ -23,7 +23,7 @@ def _init_pt_model(
     task: ICFTTask,
     prefix_init: PrefixInit,
     tokenizer: PreTrainedTokenizerFast,
-    data: Multinerd,
+    data: Dataset,
     model_path: str,
 ) -> PTModel:
     if "checkpoint" in model_path:
@@ -52,18 +52,18 @@ def _init_pt_model(
         base, info = AutoModelForSequenceClassification.from_pretrained(
             model_path,
             output_loading_info=True,
-            num_labels=len(data.ID2TAG),
-            id2label=data.ID2TAG,
-            label2id=data.TAG2ID,
+            num_labels=len(data.ID2LABEL),
+            id2label=data.ID2LABEL,
+            label2id=data.LABEL2ID,
         )
 
         config = PTModelConfig(
             task=task,
             pretrained_model=model_path,
             num_virtual_tokens=num_virtual_tokens,
-            num_labels=len(data.ID2TAG),
-            id2label=cast(dict[int, str], data.ID2TAG),
-            label2id=cast(dict[str, int], data.TAG2ID),
+            num_labels=len(data.ID2LABEL),
+            id2label=data.ID2LABEL,
+            label2id=data.LABEL2ID,
         )
     elif task == "causal-lm":
         logger.debug("load causal-lm base model %s", model_path)

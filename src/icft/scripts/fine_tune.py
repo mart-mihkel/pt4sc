@@ -11,15 +11,15 @@ from transformers.models.auto.modeling_auto import AutoModelForSequenceClassific
 
 from icft.common import (
     ICFTDataset,
+    ICFTPrompt,
     ICFTTask,
-    PromptMode,
     freeze,
     init_collate_fn,
     init_data,
     init_metrics_fn,
     train,
 )
-from icft.datasets.multinerd import Multinerd
+from icft.datasets import Dataset
 from icft.logging import logger
 
 
@@ -27,7 +27,7 @@ def _init_model(
     task: ICFTTask,
     head_only: bool,
     tokenizer: PreTrainedTokenizerFast,
-    data: Multinerd,
+    data: Dataset,
     model_path: str,
 ) -> Module:
     if task == "seq2seq":
@@ -39,9 +39,9 @@ def _init_model(
         model, info = AutoModelForSequenceClassification.from_pretrained(
             model_path,
             output_loading_info=True,
-            num_labels=len(data.ID2TAG),
-            id2label=data.ID2TAG,
-            label2id=data.TAG2ID,
+            num_labels=len(data.ID2LABEL),
+            id2label=data.ID2LABEL,
+            label2id=data.LABEL2ID,
         )
     elif task == "causal-lm":
         logger.debug("load causal-lm pretrained model %s", model_path)
@@ -62,7 +62,7 @@ def _init_model(
 def main(
     task: ICFTTask,
     dataset: ICFTDataset,
-    system_prompt: PromptMode,
+    system_prompt: ICFTPrompt,
     head_only: bool,
     model_path: str,
     run_name: str,

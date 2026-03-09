@@ -51,7 +51,7 @@ def fine_tune(
     ctx: Context,
     task: Annotated[Literal["seq2seq", "seq-cls", "causal-lm"], Option()],
     dataset: Annotated[Literal["multinerd"], Option()],
-    system_prompt: Annotated[Literal["ner", "random", "none"], Option()],
+    system_prompt: Annotated[Literal["system", "random", "none"], Option()],
     head_only: Annotated[bool, Option()],
     model: Annotated[str, Option()],
     run_name: Annotated[str, Option()],

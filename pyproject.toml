@@ -25,3 +25,7 @@ dev = [
     "ruff>=0.15.5",
     "ty>=0.0.21",
 ]
+
+[build-system]
+requires = ["hatchling>=1.29"]
+build-backend = "hatchling.build"

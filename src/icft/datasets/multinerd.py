@@ -1,12 +1,12 @@
-from typing import Iterable, Literal, TypedDict, cast
+from typing import Literal, TypedDict, cast
 
-import numpy as np
 from datasets.load import load_dataset
 from datasets.utils.info_utils import VerificationMode
 from transformers import BatchEncoding, PreTrainedTokenizerFast
 
+from icft.datasets import Dataset
 from icft.logging import logger
-from icft.types import ICFTTask, PromptMode
+from icft.types import ICFTTask, ICFTPrompt
 
 type MultinerdLang = Literal[
     "zh",
@@ -47,8 +47,56 @@ class MultinerdBatch(TypedDict):
     lang: list[MultinerdLang]
 
 
-class Multinerd:
-    _ID2TAG_FULL: dict[int, str] = {
+class Multinerd(Dataset):
+    SYSTEM_PROMPT = """Task: Named Entity Recognition
+
+Classify the NER tag of the target entity in the sentence:
+
+Sentence: Paris is the capital of France.
+Target: Paris
+Answer: LOC
+
+"""
+
+    ID2LABEL: dict[int, MultinerdTag] = {
+        0: "O",
+        1: "PER",
+        2: "ORG",
+        3: "LOC",
+        4: "ANIM",
+        5: "BIO",
+        6: "CEL",
+        7: "DIS",
+        8: "EVE",
+        9: "FOOD",
+        10: "INST",
+        11: "MEDIA",
+        12: "MYTH",
+        13: "PLANT",
+        14: "TIME",
+        15: "VEHI",
+    }
+
+    LABEL2ID: dict[MultinerdTag, int] = {
+        "O": 0,
+        "PER": 1,
+        "ORG": 2,
+        "LOC": 3,
+        "ANIM": 4,
+        "BIO": 5,
+        "CEL": 6,
+        "DIS": 7,
+        "EVE": 8,
+        "FOOD": 9,
+        "INST": 10,
+        "MEDIA": 11,
+        "MYTH": 12,
+        "PLANT": 13,
+        "TIME": 14,
+        "VEHI": 15,
+    }
+
+    _ID2LABEL_FULL: dict[int, str] = {
         0: "O",
         1: "B-PER",
         2: "I-PER",
@@ -82,88 +130,20 @@ class Multinerd:
         30: "I-VEHI",
     }
 
-    ID2TAG: dict[int, MultinerdTag] = {
-        0: "O",
-        1: "PER",
-        2: "ORG",
-        3: "LOC",
-        4: "ANIM",
-        5: "BIO",
-        6: "CEL",
-        7: "DIS",
-        8: "EVE",
-        9: "FOOD",
-        10: "INST",
-        11: "MEDIA",
-        12: "MYTH",
-        13: "PLANT",
-        14: "TIME",
-        15: "VEHI",
-    }
-
-    TAG2ID: dict[MultinerdTag, int] = {
-        "O": 0,
-        "PER": 1,
-        "ORG": 2,
-        "LOC": 3,
-        "ANIM": 4,
-        "BIO": 5,
-        "CEL": 6,
-        "DIS": 7,
-        "EVE": 8,
-        "FOOD": 9,
-        "INST": 10,
-        "MEDIA": 11,
-        "MYTH": 12,
-        "PLANT": 13,
-        "TIME": 14,
-        "VEHI": 15,
-    }
-
-    SYSTEM_PROMPT = """Task: Named Entity Recognition
-
-Classify the NER tag of the target entity in the sentence:
-
-Sentence: Paris is the capital of France.
-Target: Paris
-Answer: LOC
-
-"""
-
     def __init__(
         self,
         tokenizer: PreTrainedTokenizerFast,
         task: ICFTTask,
-        system_prompt_mode: PromptMode = "none",
+        system_prompt: ICFTPrompt = "none",
         split: list[str] = ["train", "validation", "test"],
         workers: int = 0,
-        filter_english: bool = True,
+        filter_en: bool = True,
     ) -> None:
-        self.tokenizer = tokenizer
-
-        cls_token = tokenizer.cls_token or "" if task == "seq-cls" else ""
-        self.system_prompt_tokens = self.tokenizer(
-            f"{cls_token}{self.SYSTEM_PROMPT}",
-            add_special_tokens=False,
+        super().__init__(
+            tokenizer=tokenizer,
+            task=task,
+            system_prompt=system_prompt,
         )
-
-        logger.debug(
-            "prepared multinerd system prompt with %d tokens",
-            len(self.system_prompt_tokens["input_ids"]),
-        )
-
-        if system_prompt_mode == "ner":
-            self.system_tokens = self.system_prompt_tokens
-        elif system_prompt_mode == "random":
-            self.system_tokens = self._randomize_system_prompt()
-        elif system_prompt_mode == "none":
-            ids = [tokenizer.cls_token_id] if cls_token else []
-            attn = [1] if cls_token else []
-            self.system_tokens = BatchEncoding(
-                {"input_ids": ids, "attention_mask": attn}
-            )
-        else:
-            raise NotImplementedError(f"System prompt mode '{system_prompt_mode}'")
 
         train, eval, test = load_dataset(
             "Babelscape/multinerd",
@@ -171,7 +151,7 @@ Answer: LOC
             verification_mode=VerificationMode.NO_CHECKS,
         )
 
-        if filter_english:
+        if filter_en:
             logger.debug("filter multinerd english")
             train = train.filter(_filter_english, batched=True)
             eval = eval.filter(_filter_english, batched=True)
@@ -208,29 +188,6 @@ Answer: LOC
             num_proc=workers,
         )
 
-    def _randomize_system_prompt(self) -> BatchEncoding:
-        vocab_size = self.tokenizer.vocab_size
-        special_ids = self.tokenizer.all_special_ids
-
-        random_ids = []
-        for token_id in self.system_prompt_tokens["input_ids"]:
-            if token_id in special_ids:
-                random_ids.append(token_id)
-                continue
-
-            rand_id = np.random.randint(0, vocab_size)
-            while rand_id in special_ids:
-                rand_id = np.random.randint(0, vocab_size)
-
-            random_ids.append(rand_id)
-
-        return BatchEncoding(
-            {
-                "input_ids": random_ids,
-                "attention_mask": self.system_prompt_tokens["attention_mask"],
-            }
-        )
-
     def _tokenize_seq_cls(self, batch: MultinerdBatch) -> BatchEncoding:
         prompts: list[str] = []
         labels: list[int] = []
@@ -247,7 +204,7 @@ Answer: LOC
         enc = self.tokenizer(prompts, add_special_tokens=False)
         enc["labels"] = labels
 
-        return _prepend_system_tokens(enc=enc, sys=self.system_tokens)
+        return self._prepend_system_tokens(enc=enc, sys=self.system_tokens)
 
     def _tokenize_seq2seq(self, batch: MultinerdBatch) -> BatchEncoding:
         prompts: list[str] = []
@@ -260,13 +217,13 @@ Answer: LOC
             for token, tag_id in zip(tokens, tag_ids):
                 prompt = _prompt_template(sentence=sentence, token=token)
                 prompts.append(prompt)
-                labels.append(f"{self.ID2TAG[tag_id]}{self.tokenizer.eos_token}")
+                labels.append(f"{self.ID2LABEL[tag_id]}{self.tokenizer.eos_token}")
 
         prompts_enc = self.tokenizer(prompts, add_special_tokens=False)
         labels_enc = self.tokenizer(labels, add_special_tokens=False)
         prompts_enc["labels"] = labels_enc["input_ids"]
 
-        return _prepend_system_tokens(enc=prompts_enc, sys=self.system_tokens)
+        return self._prepend_system_tokens(enc=prompts_enc, sys=self.system_tokens)
 
     def _tokenize_causal_lm(self, batch: MultinerdBatch) -> BatchEncoding:
         ids: list[list[int]] = []
@@ -279,7 +236,7 @@ Answer: LOC
 
             for token, tag_id in zip(tokens, tag_ids):
                 prompt = _prompt_template(sentence=sentence, token=token)
-                answer = f"{self.ID2TAG[tag_id]}{self.tokenizer.eos_token}"
+                answer = f"{self.ID2LABEL[tag_id]}{self.tokenizer.eos_token}"
 
                 prompt_enc = self.tokenizer(prompt, add_special_tokens=False)
                 answer_enc = self.tokenizer(answer, add_special_tokens=False)
@@ -302,27 +259,10 @@ Answer: LOC
             }
         )
 
-        return _prepend_system_tokens(enc=enc, sys=self.system_tokens)
+        return self._prepend_system_tokens(enc=enc, sys=self.system_tokens)
 
-
-def _prepend_system_tokens(
-    enc: BatchEncoding,
-    sys: BatchEncoding,
-) -> BatchEncoding:
-    ids: list[list[int]] = []
-    attn: list[list[int]] = []
-    it = zip(
-        cast(Iterable, enc["input_ids"]),
-        cast(Iterable, enc["attention_mask"]),
-    )
-
-    for _ids, _attn in it:
-        ids.append(sys["input_ids"] + _ids)
-        attn.append(sys["attention_mask"] + _attn)
-
-    return BatchEncoding(
-        {"input_ids": ids, "attention_mask": attn, "labels": enc["labels"]}
-    )
+    def __len__(self) -> int:
+        return len(self.train)
 
 
 def _prompt_template(sentence: str, token: str) -> str:
@@ -336,17 +276,17 @@ def _join_spans(
     out_ids = []
     out_tokens = []
     for token, id in zip(tokens, tag_ids):
-        tag = Multinerd._ID2TAG_FULL[id]
+        tag = Multinerd._ID2LABEL_FULL[id]
 
         if tag.startswith("B-"):
             tag = cast(MultinerdTag, tag[2:])
-            out_ids.append(Multinerd.TAG2ID[tag])
+            out_ids.append(Multinerd.LABEL2ID[tag])
             out_tokens.append(token)
         elif tag.startswith("I-"):
             out_tokens[-1] = f"{out_tokens[-1]} {token}"
         else:
             tag = cast(MultinerdTag, tag)
-            out_ids.append(Multinerd.TAG2ID[tag])
+            out_ids.append(Multinerd.LABEL2ID[tag])
             out_tokens.append(token)
 
     return out_tokens, out_ids

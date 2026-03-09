@@ -45,7 +45,7 @@ def _(
     _data = Multinerd(
         tokenizer=tokenizer,
         task="seq-cls",
-        system_prompt_mode="none",
+        system_prompt="none",
         split=["train[:8]", "validation[:1]", "test[:1]"],
         filter_english=False,
     )

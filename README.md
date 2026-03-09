@@ -4,8 +4,7 @@
 
 Use [uv](https://docs.astral.sh/uv/) for package management.
 
-Run `make install` to setup a local envrionment, see [Makefile](./Makefile) for
-other development commands.
+Run `uv sync` to setup a local envrionment.
 
 ## Usage
 

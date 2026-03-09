@@ -44,9 +44,9 @@ def test_init_pt_bert(mmbert_tokenizer: PreTrainedTokenizerFast):
     data = Multinerd(
         tokenizer=mmbert_tokenizer,
         task="seq-cls",
-        system_prompt_mode="random",
+        system_prompt="random",
         split=["train[:10]", "validation[:10]", "test[:10]"],
-        filter_english=False,
+        filter_en=False,
     )
 
     model = _init_pt_model(

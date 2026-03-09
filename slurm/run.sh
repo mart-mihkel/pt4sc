@@ -9,10 +9,8 @@
 set -euo pipefail
 mkdir -p out
 
-# BASE=distilbert/distilbert-base-uncased
 # BASE=jhu-clsp/mmBERT-small
 # BASE=jhu-clsp/mmBERT-base
-# BASE=FacebookAI/roberta-large
 
 # BASE=openai-community/gpt2
 BASE=openai-community/gpt2-medium
@@ -33,7 +31,7 @@ BATCH_SIZE=8
 WORKERS=16
 EPOCHS=1
 
-make install
+make sync
 
 # fine-tune
 LR=5e-5
@@ -44,8 +42,8 @@ uv run cli.py --log-level $LOG_LEVEL fine-tune \
     --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
 
 uv run cli.py --log-level $LOG_LEVEL fine-tune \
-    --task $TASK --dataset $DATASET --system-prompt ner --no-head-only \
-    --model $BASE --run-name $MODEL-ft-ner-$DATASET --grad-chkpts \
+    --task $TASK --dataset $DATASET --system-prompt system --no-head-only \
+    --model $BASE --run-name $MODEL-ft-system-$DATASET --grad-chkpts \
     --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
 
 uv run cli.py --log-level $LOG_LEVEL fine-tune \

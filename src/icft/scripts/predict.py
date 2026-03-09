@@ -59,5 +59,5 @@ def main(checkpoint: str, workers: int = 4):
         compute_metrics=init_metrics_fn(tokenizer=tokenizer, task=params["task"]),
     )
 
-    pred = trainer.predict(data.test)
+    pred = trainer.predict(data.test)  # type: ignore
     trainer.save_metrics("test", pred.metrics)
