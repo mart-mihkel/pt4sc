@@ -5,9 +5,12 @@ from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from icft.common import init_collate_fn
 from icft.datasets.multinerd import Multinerd
-from icft.models import PTModel, PTModelConfig
-from icft.models.gpt2 import PTGPT2Model
-from icft.models.t5 import PTT5Model
+from icft.models import (
+    PTDecoderModel,
+    PTEncoderDecoderModel,
+    PTEncoderModel,
+    PTModelConfig,
+)
 from icft.scripts.prompt_tune import _init_pt_model
 
 
@@ -78,7 +81,7 @@ def test_pt_bert(mmbert_tokenizer: PreTrainedTokenizerFast):
         label2id={"0": 0, "1": 1},
     )
 
-    model = PTModel(config=config)
+    model = PTEncoderModel(config=config)
     collate_fn = init_collate_fn(tokenizer=mmbert_tokenizer, task="seq-cls")
     out = model(**collate_fn(data))
 
@@ -101,7 +104,7 @@ def test_pt_gpt2_causal_lm(gpt2_tokenizer: PreTrainedTokenizerFast):
         num_labels=2,
     )
 
-    model = PTGPT2Model(config=config)
+    model = PTDecoderModel(config=config)
     model.base.config.pad_token_id = gpt2_tokenizer.eos_token_id
     collate_fn = init_collate_fn(tokenizer=gpt2_tokenizer, task="causal-lm")
     out = model(**collate_fn(data))
@@ -125,7 +128,7 @@ def test_pt_gpt2_seq_cls(gpt2_tokenizer: PreTrainedTokenizerFast):
         label2id={"0": 0, "1": 1},
     )
 
-    model = PTGPT2Model(config=config)
+    model = PTDecoderModel(config=config)
     model.base.config.pad_token_id = gpt2_tokenizer.eos_token_id
     collate_fn = init_collate_fn(tokenizer=gpt2_tokenizer, task="seq-cls")
     out = model(**collate_fn(data))
@@ -148,7 +151,7 @@ def test_pt_t5_seq2seq(t5_tokenizer: PreTrainedTokenizerFast):
         num_virtual_tokens=10,
     )
 
-    model = PTT5Model(config=config)
+    model = PTEncoderDecoderModel(config=config)
     model.base.config.pad_token_id = t5_tokenizer.eos_token_id
     collate_fn = init_collate_fn(tokenizer=t5_tokenizer, task="seq2seq")
     out = model(**collate_fn(data))
@@ -172,7 +175,7 @@ def test_pt_t5_seq_cls(t5_tokenizer: PreTrainedTokenizerFast):
         label2id={"0": 0, "1": 1},
     )
 
-    model = PTT5Model(config=config)
+    model = PTEncoderDecoderModel(config=config)
     model.base.config.pad_token_id = t5_tokenizer.eos_token_id
     collate_fn = init_collate_fn(tokenizer=t5_tokenizer, task="seq-cls")
     out = model(**collate_fn(data))

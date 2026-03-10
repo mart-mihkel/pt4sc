@@ -13,9 +13,13 @@ from transformers import (
 from icft.common import freeze, init_collate_fn, init_data, init_metrics_fn, train
 from icft.datasets import Dataset
 from icft.logging import logger
-from icft.models import PTModel, PTModelConfig
-from icft.models.gpt2 import PTGPT2Model
-from icft.models.t5 import PTT5Model
+from icft.models import (
+    PTDecoderModel,
+    PTEncoderDecoderModel,
+    PTEncoderModel,
+    PTModel,
+    PTModelConfig,
+)
 from icft.types import ICFTDataset, ICFTTask, PrefixInit
 
 
@@ -77,15 +81,18 @@ def _init_pt_model(
     else:
         raise NotImplementedError(f"Task '{task}'")
 
-    if base.config.model_type == "gpt2":
-        logger.debug("init pt-gpt2-model")
-        model = PTGPT2Model(config=config)
-    elif base.config.model_type == "t5":
-        logger.debug("init pt-t5-model")
-        model = PTT5Model(config=config)
+    model_type = base.config.model_type
+    if model_type in {"gpt2", "gpt_neox", "gemma", "qwen2"}:
+        logger.debug("init pt decoder model")
+        model = PTDecoderModel(config=config)
+    elif model_type in {"t5", "t5gemma", "t5gemma2"}:
+        logger.debug("init pt encoder-decoder model")
+        model = PTEncoderDecoderModel(config=config)
+    elif model_type in {"bert", "distilbert", "roberta", "modernbert"}:
+        logger.debug("init pt encoder model")
+        model = PTEncoderModel(config=config)
     else:
-        logger.debug("init pt-model")
-        model = PTModel(config=config)
+        raise NotImplementedError("PT model for base '{model_type}'")
 
     logger.debug("load pretrained weights")
     model.base.load_state_dict(base.state_dict(), strict=False)
