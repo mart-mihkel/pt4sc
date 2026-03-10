@@ -1,7 +1,4 @@
-from typing import cast
-
-from pytest import fixture
-from transformers import AutoTokenizer, PreTrainedTokenizerFast
+from transformers import PreTrainedTokenizerFast
 
 from icft.common import init_collate_fn
 from icft.datasets.multinerd import DatasetInfo
@@ -14,45 +11,13 @@ from icft.models import (
 from icft.scripts.prompt_tune import init_pt_model
 
 
-@fixture
-def mmbert_tokenizer() -> PreTrainedTokenizerFast:
-    return cast(
-        PreTrainedTokenizerFast,
-        AutoTokenizer.from_pretrained("jhu-clsp/mmBERT-base"),
-    )
-
-
-@fixture
-def gpt2_tokenizer() -> PreTrainedTokenizerFast:
-    tokenizer = cast(
-        PreTrainedTokenizerFast,
-        AutoTokenizer.from_pretrained("openai-community/gpt2"),
-    )
-
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.pad_token_id = tokenizer.eos_token_id
-
-    return tokenizer
-
-
-@fixture
-def t5_tokenizer() -> PreTrainedTokenizerFast:
-    return cast(
-        PreTrainedTokenizerFast,
-        AutoTokenizer.from_pretrained("google-t5/t5-small"),
-    )
-
-
-@fixture
-def info() -> DatasetInfo:
-    return DatasetInfo(
+def test_init_pt_bert(mmbert_tokenizer: PreTrainedTokenizerFast):
+    info = DatasetInfo(
         id2label={0: "0", 1: "1"},
         label2id={"0": 0, "1": 1},
         system_prompt="mock",
     )
 
-
-def test_init_pt_bert(mmbert_tokenizer: PreTrainedTokenizerFast, info: DatasetInfo):
     model = init_pt_model(
         task="seq-cls",
         prefix_init="pretrained",

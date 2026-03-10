@@ -289,7 +289,7 @@ def train(
     logger.info("batch size              | %-24d |", batch_size)
     logger.info("effective batch size    | %-24d |", effective_batch_size)
     logger.info("train samples           | %-24d |", len(data["train"]))
-    logger.info("eval samples            | %-24d |", len(data["validation"]))
+    logger.info("dev samples             | %-24d |", len(data["dev"]))
     logger.info("test samples            | %-24d |", len(data["test"]))
     logger.info("train steps             | %-24d |", train_steps)
     logger.info("logging steps           | %-24d |", logging_steps)
@@ -322,7 +322,7 @@ def train(
         model,
         args=args,
         train_dataset=data["train"],
-        eval_dataset=data["validation"],
+        eval_dataset=data["dev"],
         data_collator=collate_fn,
         compute_metrics=metrics_fn,
     )

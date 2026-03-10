@@ -1,59 +1,51 @@
-from typing import cast
-
-from transformers import AutoTokenizer, PreTrainedTokenizerFast
+from transformers import PreTrainedTokenizerFast
 
 from icft.datasets.estner import init_estner
 
+split = {
+    "train": "train[:100]",
+    "dev": "dev[:100]",
+    "test": "test[:100]",
+}
 
-def test_estner_mmbert():
-    tokenizer = cast(
-        PreTrainedTokenizerFast,
-        AutoTokenizer.from_pretrained("jhu-clsp/mmBERT-base"),
-    )
 
+def test_estner_mmbert(mmbert_tokenizer: PreTrainedTokenizerFast):
     data, _ = init_estner(
-        tokenizer=tokenizer,
+        tokenizer=mmbert_tokenizer,
         task="seq-cls",
         prompt_mode="system",
         workers=0,
-        split={"train": "train[:1]", "dev": "dev[:1]"},  # type: ignore
+        split=split,  # type: ignore
     )
 
     assert len(data["train"]) > 0
+    assert len(data["dev"]) > 0
+    assert len(data["test"]) > 0
 
 
-def test_estner_gpt2():
-    tokenizer = cast(
-        PreTrainedTokenizerFast,
-        AutoTokenizer.from_pretrained("openai-community/gpt2"),
-    )
-
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.pad_token_id = tokenizer.eos_token_id
-
+def test_estner_gpt2(gpt2_tokenizer: PreTrainedTokenizerFast):
     data, _ = init_estner(
-        tokenizer=tokenizer,
+        tokenizer=gpt2_tokenizer,
         task="causal-lm",
         prompt_mode="system",
         workers=0,
-        split={"train": "train[:1]", "dev": "dev[:1]"},  # type: ignore
+        split=split,  # type: ignore
     )
 
     assert len(data["train"]) > 0
+    assert len(data["dev"]) > 0
+    assert len(data["test"]) > 0
 
 
-def test_estner_t5():
-    tokenizer = cast(
-        PreTrainedTokenizerFast,
-        AutoTokenizer.from_pretrained("google-t5/t5-small"),
-    )
-
+def test_estner_t5(t5_tokenizer: PreTrainedTokenizerFast):
     data, _ = init_estner(
-        tokenizer=tokenizer,
+        tokenizer=t5_tokenizer,
         task="seq2seq",
         prompt_mode="system",
         workers=0,
-        split={"train": "train[:1]", "dev": "dev[:1]"},  # type: ignore
+        split=split,  # type: ignore
     )
 
     assert len(data["train"]) > 0
+    assert len(data["dev"]) > 0
+    assert len(data["test"]) > 0

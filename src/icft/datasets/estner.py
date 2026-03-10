@@ -227,6 +227,4 @@ def init_estner(
         system_prompt=system_prompt,
     )
 
-    data["validation"] = data.pop("dev")
-
     return data, info

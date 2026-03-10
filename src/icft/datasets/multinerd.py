@@ -3,6 +3,7 @@ from typing import Literal, TypedDict, cast
 from datasets.dataset_dict import DatasetDict
 from datasets.load import load_dataset
 from datasets.splits import Split
+from datasets.utils.info_utils import VerificationMode
 from transformers import BatchEncoding, PreTrainedTokenizerFast
 
 from icft.datasets.common import DatasetInfo, init_system_prompt, prepend_system_tokens
@@ -248,7 +249,13 @@ def init_multinerd(
     workers: int,
     split: Split | None = None,
 ) -> tuple[DatasetDict, DatasetInfo]:
-    data = cast(DatasetDict, load_dataset("Babelscape/multinerd", split=split))
+    data = load_dataset(
+        "Babelscape/multinerd",
+        split=split,
+        verification_mode=VerificationMode.NO_CHECKS,
+    )
+
+    data = cast(DatasetDict, data)
 
     if filter_en:
         logger.debug("filter multinerd english")
@@ -293,5 +300,7 @@ def init_multinerd(
         label2id=cast(dict[str, int], label2id),
         system_prompt=system_prompt,
     )
+
+    data["dev"] = data.pop("validation")
 
     return data, info
