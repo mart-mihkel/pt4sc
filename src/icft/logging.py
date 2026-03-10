@@ -1,11 +1,11 @@
 import logging
 import threading
 
+import accelerate
 import datasets
 import httpx
 import torch
 import transformers
-import accelerate
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.traceback import Traceback, install

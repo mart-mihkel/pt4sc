@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.20.2"
+__generated_with = "0.20.4"
 app = marimo.App()
 
 
@@ -17,15 +17,15 @@ def _():
         T5ForSequenceClassification,
     )
 
-    from icft.datasets.multinerd import Multinerd
+    from icft.datasets.multinerd import init_multinerd
 
     return (
         AutoTokenizer,
         CrossEntropyLoss,
         DataCollatorWithPadding,
-        Multinerd,
         T5ForSequenceClassification,
         Tensor,
+        init_multinerd,
         mo,
         torch,
     )
@@ -35,19 +35,19 @@ def _():
 def _(
     AutoTokenizer,
     DataCollatorWithPadding,
-    Multinerd,
     T5ForSequenceClassification,
+    init_multinerd,
 ):
     _model_path = "google-t5/t5-small"
 
     tokenizer = AutoTokenizer.from_pretrained(_model_path)
 
-    _data = Multinerd(
+    _data, _info = init_multinerd(
         tokenizer=tokenizer,
         task="seq-cls",
         system_prompt="none",
-        split=["train[:8]", "validation[:1]", "test[:1]"],
-        filter_english=False,
+        filter_en=True,
+        workers=0,
     )
 
     _collator = DataCollatorWithPadding(tokenizer=tokenizer)
@@ -55,9 +55,9 @@ def _(
 
     model = T5ForSequenceClassification.from_pretrained(
         _model_path,
-        num_labels=len(Multinerd.ID2TAG),
-        id2label=Multinerd.ID2TAG,
-        label2id=Multinerd.TAG2ID,
+        num_labels=len(_info["id2label"]),
+        id2label=_info["id2label"],
+        label2id=_info["label2id"],
     )
 
     encoder = model.transformer.encoder
@@ -96,7 +96,11 @@ def _(mo):
     mo.md(r"""
     ### Encoder-Decoder Forward Pass
 
-    T5 is an encoder-decoder model, the input token ids for the decoder are [usually](https://github.com/huggingface/transformers/blob/main/src/transformers/models/t5/modeling_t5.py#L614) taken as the encoder input ids prepended by the decoder start token. To deal with learnable embeddings we need to repeat the same on an embedding level.
+    T5 is an encoder-decoder model, the input token ids for the decoder are
+    [usually](https://github.com/huggingface/transformers/blob/main/src/transformers/models/t5/modeling_t5.py#L614)
+    taken as the encoder input ids prepended by the decoder start token.
+    To deal with learnable embeddings we need to repeat the same on an
+    embedding level.
     """)
     return
 
@@ -173,7 +177,9 @@ def _(mo):
     mo.md(r"""
     ### Encoder Forward Pass
 
-    Using just the encoder. For BERT models with a classification token prepended to the input sequence it is common to use first pooling, T5 has no such token so we use mean pooling.
+    Using just the encoder. For BERT models with a classification token
+    prepended to the input sequence it is common to use first pooling, T5 has
+    no such token so we use mean pooling.
     """)
     return
 

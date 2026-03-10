@@ -1,62 +1,21 @@
 from typing import cast
 
-from torch.nn import Module
 from transformers import (
-    AutoModelForCausalLM,
-    AutoModelForSeq2SeqLM,
     AutoTokenizer,
     PreTrainedTokenizerFast,
 )
-from transformers.models.auto.modeling_auto import AutoModelForSequenceClassification
 
 from icft.common import (
     ICFTDataset,
     ICFTPrompt,
     ICFTTask,
-    freeze,
     init_collate_fn,
     init_data,
     init_metrics_fn,
+    init_model,
     train,
 )
-from icft.datasets import Dataset
 from icft.logging import logger
-
-
-def _init_model(
-    task: ICFTTask,
-    head_only: bool,
-    tokenizer: PreTrainedTokenizerFast,
-    data: Dataset,
-    model_path: str,
-) -> Module:
-    if task == "seq2seq":
-        logger.debug("load seq2seq pretrained model %s", model_path)
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
-        info = {"missing_keys": set()}
-    elif task == "seq-cls":
-        logger.debug("load seq-cls pretrained model %s", model_path)
-        model, info = AutoModelForSequenceClassification.from_pretrained(
-            model_path,
-            output_loading_info=True,
-            num_labels=len(data.ID2LABEL),
-            id2label=data.ID2LABEL,
-            label2id=data.LABEL2ID,
-        )
-    elif task == "causal-lm":
-        logger.debug("load causal-lm pretrained model %s", model_path)
-        model = AutoModelForCausalLM.from_pretrained(model_path)
-        info = {"missing_keys": set()}
-    else:
-        raise NotImplementedError(f"Task '{task}'")
-
-    if model.config.pad_token_id is None:
-        model.config.pad_token_id = tokenizer.eos_token_id
-
-    if head_only:
-        freeze(model=model, skip=info["missing_keys"])
-
-    return model
 
 
 def main(
@@ -78,7 +37,7 @@ def main(
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    data = init_data(
+    data, info = init_data(
         tokenizer=tokenizer,
         task=task,
         dataset=dataset,
@@ -86,12 +45,12 @@ def main(
         workers=workers,
     )
 
-    model = _init_model(
+    model = init_model(
         task=task,
         head_only=head_only,
         tokenizer=tokenizer,
-        data=data,
         model_path=model_path,
+        data_info=info,
     )
 
     total = sum(p.numel() for p in model.parameters())

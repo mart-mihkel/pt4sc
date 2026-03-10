@@ -1,118 +1,19 @@
 from typing import cast
 
-import torch
-from torch.nn import Parameter
 from transformers import (
-    AutoModelForCausalLM,
-    AutoModelForSeq2SeqLM,
-    AutoModelForSequenceClassification,
     AutoTokenizer,
     PreTrainedTokenizerFast,
 )
 
-from icft.common import freeze, init_collate_fn, init_data, init_metrics_fn, train
-from icft.datasets import Dataset
-from icft.logging import logger
-from icft.models import (
-    PTDecoderModel,
-    PTEncoderDecoderModel,
-    PTEncoderModel,
-    PTModel,
-    PTModelConfig,
+from icft.common import (
+    init_collate_fn,
+    init_data,
+    init_metrics_fn,
+    init_pt_model,
+    train,
 )
+from icft.logging import logger
 from icft.types import ICFTDataset, ICFTTask, PrefixInit
-
-
-def _init_pt_model(
-    task: ICFTTask,
-    prefix_init: PrefixInit,
-    tokenizer: PreTrainedTokenizerFast,
-    data: Dataset,
-    model_path: str,
-) -> PTModel:
-    if "checkpoint" in model_path:
-        logger.debug("load pt-model from checkpoint")
-        config = PTModelConfig.from_pretrained(model_path, local_files_only=True)
-        return PTModel.from_pretrained(
-            model_path,
-            config=config,
-            local_files_only=True,
-        )
-
-    system_ids = torch.tensor(data.system_prompt_tokens["input_ids"])
-    num_virtual_tokens = len(system_ids)
-
-    if task == "seq2seq":
-        logger.debug("load seq2seq base model %s", model_path)
-        base = AutoModelForSeq2SeqLM.from_pretrained(model_path)
-        info = {"missing_keys": set()}
-        config = PTModelConfig(
-            task=task,
-            pretrained_model=model_path,
-            num_virtual_tokens=num_virtual_tokens,
-        )
-    elif task == "seq-cls":
-        logger.debug("load seq-cls base model %s", model_path)
-        base, info = AutoModelForSequenceClassification.from_pretrained(
-            model_path,
-            output_loading_info=True,
-            num_labels=len(data.ID2LABEL),
-            id2label=data.ID2LABEL,
-            label2id=data.LABEL2ID,
-        )
-
-        config = PTModelConfig(
-            task=task,
-            pretrained_model=model_path,
-            num_virtual_tokens=num_virtual_tokens,
-            num_labels=len(data.ID2LABEL),
-            id2label=data.ID2LABEL,
-            label2id=data.LABEL2ID,
-        )
-    elif task == "causal-lm":
-        logger.debug("load causal-lm base model %s", model_path)
-        base = AutoModelForCausalLM.from_pretrained(model_path)
-        info = {"missing_keys": set()}
-        config = PTModelConfig(
-            task=task,
-            pretrained_model=model_path,
-            num_virtual_tokens=num_virtual_tokens,
-        )
-    else:
-        raise NotImplementedError(f"Task '{task}'")
-
-    model_type = base.config.model_type
-    if model_type in {"gpt2", "gpt_neox", "gemma", "qwen2"}:
-        logger.debug("init pt decoder model")
-        model = PTDecoderModel(config=config)
-    elif model_type in {"t5", "t5gemma", "t5gemma2"}:
-        logger.debug("init pt encoder-decoder model")
-        model = PTEncoderDecoderModel(config=config)
-    elif model_type in {"bert", "distilbert", "roberta", "modernbert"}:
-        logger.debug("init pt encoder model")
-        model = PTEncoderModel(config=config)
-    else:
-        raise NotImplementedError("PT model for base '{model_type}'")
-
-    logger.debug("load pretrained weights")
-    model.base.load_state_dict(base.state_dict(), strict=False)
-
-    freeze(model=model.base, skip=info["missing_keys"])
-
-    emb = model.base.get_input_embeddings()
-    if prefix_init == "random":
-        logger.debug("init random prefix with %d tokens", num_virtual_tokens)
-        model.prefix = Parameter(torch.randn(1, num_virtual_tokens, emb.embedding_dim))
-    elif prefix_init == "pretrained":
-        logger.debug("init pretrained prefix with %d tokens", num_virtual_tokens)
-        model.prefix = Parameter(emb(system_ids).detach())
-    else:
-        raise NotImplementedError(f"Prefix init '{prefix_init}'")
-
-    if model.base.config.pad_token_id is None:
-        model.base.config.pad_token_id = tokenizer.pad_token_id
-
-    return model
 
 
 def main(
@@ -133,7 +34,7 @@ def main(
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    data = init_data(
+    data, info = init_data(
         tokenizer=tokenizer,
         task=task,
         dataset=dataset,
@@ -141,12 +42,12 @@ def main(
         workers=workers,
     )
 
-    model = _init_pt_model(
+    model = init_pt_model(
         task=task,
         prefix_init=prefix_init,
         tokenizer=tokenizer,
-        data=data,
         model_path=model_path,
+        data_info=info,
     )
 
     total = sum(p.numel() for p in model.parameters())

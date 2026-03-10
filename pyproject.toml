@@ -29,3 +29,6 @@ dev = [
 [build-system]
 requires = ["hatchling>=1.29"]
 build-backend = "hatchling.build"
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "RUF"]

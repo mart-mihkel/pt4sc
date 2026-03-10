@@ -4,14 +4,14 @@ from pytest import fixture
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from icft.common import init_collate_fn
-from icft.datasets.multinerd import Multinerd
+from icft.datasets.multinerd import DatasetInfo
 from icft.models import (
     PTDecoderModel,
     PTEncoderDecoderModel,
     PTEncoderModel,
     PTModelConfig,
 )
-from icft.scripts.prompt_tune import _init_pt_model
+from icft.scripts.prompt_tune import init_pt_model
 
 
 @fixture
@@ -43,21 +43,22 @@ def t5_tokenizer() -> PreTrainedTokenizerFast:
     )
 
 
-def test_init_pt_bert(mmbert_tokenizer: PreTrainedTokenizerFast):
-    data = Multinerd(
-        tokenizer=mmbert_tokenizer,
-        task="seq-cls",
-        system_prompt="random",
-        split=["train[:10]", "validation[:10]", "test[:10]"],
-        filter_en=False,
+@fixture
+def info() -> DatasetInfo:
+    return DatasetInfo(
+        id2label={0: "0", 1: "1"},
+        label2id={"0": 0, "1": 1},
+        system_prompt="mock",
     )
 
-    model = _init_pt_model(
+
+def test_init_pt_bert(mmbert_tokenizer: PreTrainedTokenizerFast, info: DatasetInfo):
+    model = init_pt_model(
         task="seq-cls",
         prefix_init="pretrained",
         tokenizer=mmbert_tokenizer,
-        data=data,
         model_path="jhu-clsp/mmBERT-base",
+        data_info=info,
     )
 
     assert model is not None

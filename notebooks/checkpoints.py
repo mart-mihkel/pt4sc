@@ -1,32 +1,26 @@
 import marimo
 
-__generated_with = "0.20.2"
+__generated_with = "0.20.4"
 app = marimo.App()
 
 
 @app.cell
 def _():
-    from typing import cast
 
     import torch
     from torch.nn import Parameter
     from transformers import (
         AutoTokenizer,
-        PreTrainedTokenizerFast,
     )
 
-    from icft.datasets.multinerd import Multinerd
     from icft.models import PTModel, PTModelConfig
-    from icft.scripts.prompt_tune import _init_pt_model as init_pt_model
+    from icft.scripts.prompt_tune import init_pt_model
 
     return (
         AutoTokenizer,
-        Multinerd,
         PTModel,
         PTModelConfig,
         Parameter,
-        PreTrainedTokenizerFast,
-        cast,
         init_pt_model,
         torch,
     )
@@ -37,36 +31,21 @@ def _():
     task = "seq-cls"
     prefix_init = "pretrained"
     model_path = "jhu-clsp/mmBERT-base"
-    workers = 8
-    return model_path, prefix_init, task, workers
+    return model_path, prefix_init, task
 
 
 @app.cell
-def _(
-    AutoTokenizer,
-    Multinerd,
-    PreTrainedTokenizerFast,
-    cast,
-    init_pt_model,
-    model_path,
-    prefix_init,
-    task,
-    workers,
-):
+def _(AutoTokenizer, init_pt_model, model_path, prefix_init, task):
     tokenizer = AutoTokenizer.from_pretrained(model_path)
-    tokenizer = cast(PreTrainedTokenizerFast, tokenizer)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-
-    data = Multinerd(tokenizer=tokenizer, task=task, workers=workers)
 
     model = init_pt_model(
         task=task,
         model_path=model_path,
         tokenizer=tokenizer,
         prefix_init=prefix_init,
-        data=data,
+        sys_enc=tokenizer("System prompt"),
+        id2label={0: "0"},
+        label2id={"0": 0},
     )
 
     if model.base.config.pad_token_id is None:

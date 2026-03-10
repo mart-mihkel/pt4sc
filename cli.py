@@ -1,4 +1,5 @@
-from typing import Annotated, Any, Callable, Literal
+from collections.abc import Callable
+from typing import Annotated, Any, Literal
 
 from typer import Context, Option, Typer
 
@@ -11,7 +12,6 @@ def timed(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-
         from icft.logging import logger
 
         start = time.time()

@@ -23,7 +23,7 @@ def main(checkpoint: str, workers: int = 4):
     AutoModel.register(PTModelConfig, PTModel)
 
     logger.debug("load cli parameters from checkpoint")
-    with open(Path(checkpoint).parent / "cli_params.json", "r") as f:
+    with open(Path(checkpoint).parent / "cli_params.json") as f:
         params = json.load(f)
 
     logger.debug("load tokenizer from checkpoint")
@@ -35,7 +35,7 @@ def main(checkpoint: str, workers: int = 4):
     logger.debug("load model from checkpoint")
     model = AutoModel.from_pretrained(checkpoint)
 
-    data = init_data(
+    data, _ = init_data(
         tokenizer=tokenizer,
         task=params["task"],
         dataset=params["dataset"],
@@ -59,5 +59,5 @@ def main(checkpoint: str, workers: int = 4):
         compute_metrics=init_metrics_fn(tokenizer=tokenizer, task=params["task"]),
     )
 
-    pred = trainer.predict(data.test)  # type: ignore
+    pred = trainer.predict(data["test"])  # type: ignore
     trainer.save_metrics("test", pred.metrics)

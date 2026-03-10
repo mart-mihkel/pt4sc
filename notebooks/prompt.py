@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.20.2"
+__generated_with = "0.20.4"
 app = marimo.App()
 
 
@@ -8,9 +8,9 @@ app = marimo.App()
 def _():
     from transformers import AutoTokenizer
 
-    from icft.datasets.multinerd import Multinerd
+    from icft.datasets.multinerd import init_multinerd
 
-    return AutoTokenizer, Multinerd
+    return AutoTokenizer, init_multinerd
 
 
 @app.cell
@@ -27,31 +27,31 @@ def _():
 
 
 @app.cell
-def _(AutoTokenizer, Multinerd, pretrained_model, task):
+def _(AutoTokenizer, init_multinerd, pretrained_model, task):
     tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
 
-    enc_ner = Multinerd(
+    enc_ner = init_multinerd(
         tokenizer=tokenizer,
         task=task,
         system_prompt="system",
-        split=["train[:1]", "validation[:1]", "test[:1]"],
-        filter_english=False,
+        filter_en=False,
+        workers=0,
     ).train[0]
 
-    enc_random = Multinerd(
+    enc_random = init_multinerd(
         tokenizer=tokenizer,
         task=task,
         system_prompt="random",
-        split=["train[:1]", "validation[:1]", "test[:1]"],
-        filter_english=False,
+        filter_en=False,
+        workers=0,
     ).train[0]
 
-    enc_none = Multinerd(
+    enc_none = init_multinerd(
         tokenizer=tokenizer,
         task=task,
         system_prompt="none",
-        split=["train[:1]", "validation[:1]", "test[:1]"],
-        filter_english=False,
+        filter_en=False,
+        workers=0,
     ).train[0]
     return enc_ner, enc_none, enc_random, tokenizer
 

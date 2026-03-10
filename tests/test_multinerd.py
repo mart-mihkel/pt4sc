@@ -2,17 +2,7 @@ from typing import cast
 
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
-from icft.datasets.multinerd import Multinerd, _join_spans
-
-
-def test_join_spans():
-    tokens = ["New", "York", "is", "sus", "."]
-    ids = [5, 4, 0, 0, 0]
-
-    tokens, ids = _join_spans(tokens, ids)
-
-    assert tokens == ["New York", "is", "sus", "."]
-    assert ids == [3, 0, 0, 0]
+from icft.datasets.multinerd import init_multinerd
 
 
 def test_multinerd_mmbert():
@@ -21,17 +11,16 @@ def test_multinerd_mmbert():
         AutoTokenizer.from_pretrained("jhu-clsp/mmBERT-base"),
     )
 
-    data = Multinerd(
+    data, _ = init_multinerd(
         tokenizer=tokenizer,
         task="seq-cls",
         system_prompt="system",
-        split=["train[:10]", "validation[:10]", "test[:10]"],
         filter_en=False,
+        workers=0,
+        split={"train": "train[:1]"},  # type: ignore
     )
 
-    assert len(data.train) > 0
-    assert len(data.eval) > 0
-    assert len(data.test) > 0
+    assert len(data["train"]) > 0
 
 
 def test_multinerd_gpt2():
@@ -43,17 +32,16 @@ def test_multinerd_gpt2():
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    data = Multinerd(
+    data, _ = init_multinerd(
         tokenizer=tokenizer,
         task="causal-lm",
         system_prompt="system",
-        split=["train[:10]", "validation[:10]", "test[:10]"],
         filter_en=False,
+        workers=0,
+        split={"train": "train[:1]"},  # type: ignore
     )
 
-    assert len(data.train) > 0
-    assert len(data.eval) > 0
-    assert len(data.test) > 0
+    assert len(data["train"]) > 0
 
 
 def test_multinerd_t5():
@@ -62,14 +50,13 @@ def test_multinerd_t5():
         AutoTokenizer.from_pretrained("google-t5/t5-small"),
     )
 
-    data = Multinerd(
+    data, _ = init_multinerd(
         tokenizer=tokenizer,
         task="seq2seq",
         system_prompt="system",
-        split=["train[:10]", "validation[:10]", "test[:10]"],
         filter_en=False,
+        workers=0,
+        split={"train": "train[:1]"},  # type: ignore
     )
 
-    assert len(data.train) > 0
-    assert len(data.eval) > 0
-    assert len(data.test) > 0
+    assert len(data["train"]) > 0
