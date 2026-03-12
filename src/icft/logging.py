@@ -10,10 +10,10 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.traceback import Traceback, install
 
-_console = Console(force_terminal=True)
+console = Console(force_terminal=True)
 _suppress = [transformers, datasets, torch, accelerate, httpx]
 _handler = RichHandler(
-    console=_console,
+    console=console,
     markup=True,
     show_time=False,
     rich_tracebacks=True,
@@ -22,12 +22,12 @@ _handler = RichHandler(
 )
 
 install(
-    console=_console,
+    console=console,
     show_locals=True,
     suppress=_suppress,
 )
 
-threading.excepthook = lambda args: _console.print(
+threading.excepthook = lambda args: console.print(
     Traceback.from_exception(
         args.exc_type,
         args.exc_value,

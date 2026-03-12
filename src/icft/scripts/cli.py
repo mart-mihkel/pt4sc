@@ -15,13 +15,11 @@ def timed(func: Callable) -> Callable:
         from icft.logging import logger
 
         start = time.time()
-
         result = func(*args, **kwargs)
-
         elapsed = time.time() - start
+
         hours, remainder = divmod(int(elapsed), 3600)
         minutes, seconds = divmod(remainder, 60)
-
         logger.info("time elapsed %02d:%02d:%02d", hours, minutes, seconds)
 
         return result
@@ -50,7 +48,7 @@ def callback(log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"):
 def fine_tune(
     ctx: Context,
     task: Annotated[Literal["seq2seq", "seq-cls", "causal-lm"], Option()],
-    dataset: Annotated[Literal["multinerd", "estner"], Option()],
+    dataset: Annotated[Literal["multinerd", "estner", "superglue"], Option()],
     prompt_mode: Annotated[Literal["system", "random", "none"], Option()],
     head_only: Annotated[bool, Option()],
     model: Annotated[str, Option()],
@@ -84,7 +82,7 @@ def fine_tune(
 def prompt_tune(
     ctx: Context,
     task: Annotated[Literal["seq2seq", "seq-cls", "causal-lm"], Option()],
-    dataset: Annotated[Literal["multinerd", "estner"], Option()],
+    dataset: Annotated[Literal["multinerd", "estner", "superglue"], Option()],
     prefix_init: Annotated[Literal["pretrained", "labels", "random"], Option()],
     model: Annotated[str, Option()],
     run_name: Annotated[str, Option()],

@@ -6,6 +6,7 @@ from typing import Any
 import torch
 from datasets.dataset_dict import DatasetDict
 from mlflow import end_run, log_metrics, start_run
+from rich.table import Table
 from torch.nn import Module, Parameter
 from transformers import (
     AutoModelForCausalLM,
@@ -22,7 +23,7 @@ from transformers.training_args import TrainingArguments
 
 from icft.datasets.estner import init_estner
 from icft.datasets.multinerd import DatasetInfo, init_multinerd
-from icft.logging import logger
+from icft.logging import console, logger
 from icft.metrics import (
     compute_metrics_causal_lm,
     compute_metrics_seq2seq,
@@ -148,7 +149,7 @@ def init_pt_model(
         logger.debug("init pt encoder model")
         model = PTEncoderModel(config=config)
     else:
-        raise NotImplementedError("PT model for base '{model_type}'")
+        raise NotImplementedError(f"PT model for base '{model_type}'")
 
     logger.debug("load pretrained weights")
     model.base.load_state_dict(base.state_dict(), strict=False)
@@ -281,20 +282,22 @@ def train(
     eval_steps = max(1, train_steps // 5)
     logging_steps = max(1, train_steps // 100)
 
-    logger.info("CUDA                    | %-24s |", have_cuda)
-    logger.info("optimizer               | %-24s |", optim)
-    logger.info("epochs                  | %-24d |", epochs)
-    logger.info("learning rate           | %-24f |", lr)
-    logger.info("grad checkpoints        | %-24s |", grad_chkpts)
-    logger.info("grad accumulation steps | %-24d |", grad_acc_steps)
-    logger.info("batch size              | %-24d |", batch_size)
-    logger.info("effective batch size    | %-24d |", effective_batch_size)
-    logger.info("train samples           | %-24d |", len(data["train"]))
-    logger.info("dev samples             | %-24d |", len(data["dev"]))
-    logger.info("test samples            | %-24d |", len(data["test"]))
-    logger.info("train steps             | %-24d |", train_steps)
-    logger.info("logging steps           | %-24d |", logging_steps)
-    logger.info("eval steps              | %-24d |", eval_steps)
+    table = Table(caption="Training arguments", show_header=False)
+    table.add_row("CUDA", str(have_cuda))
+    table.add_row("optimizer", optim)
+    table.add_row("epochs", str(epochs))
+    table.add_row("learning rate", str(lr))
+    table.add_row("grad checkpoints", str(grad_chkpts))
+    table.add_row("grad accumulation steps", str(grad_acc_steps))
+    table.add_row("batch size", str(batch_size))
+    table.add_row("effective batch size", str(effective_batch_size))
+    table.add_row("train samples", str(len(data["train"])))
+    table.add_row("dev samples", str(len(data["dev"])))
+    table.add_row("test samples", str(len(data["test"])))
+    table.add_row("train steps", str(train_steps))
+    table.add_row("logging steps", str(logging_steps))
+    table.add_row("eval steps", str(eval_steps))
+    console.print(table)
 
     logger.debug("init trainer")
 

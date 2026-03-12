@@ -1,5 +1,6 @@
 from typing import cast
 
+from rich.table import Table
 from transformers import (
     AutoTokenizer,
     PreTrainedTokenizerFast,
@@ -12,7 +13,7 @@ from icft.common import (
     init_pt_model,
     train,
 )
-from icft.logging import logger
+from icft.logging import console
 from icft.types import DatasetName, PrefixInit, Task
 
 
@@ -54,18 +55,18 @@ def pt(
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     prefix = model.prefix.numel()
 
-    logger.info("Key                     | %-24s |", "Value")
-    logger.info("------------------------+-" + 24 * "-" + "-+")
-    logger.info("model                   | %-24s |", model_path.split("/")[-1])
-    logger.info("params                  | %-24d |", total)
-    logger.info("trainable               | %-24d |", trainable)
-    logger.info("head                    | %-24d |", trainable - prefix)
-    logger.info("prefix                  | %-24d |", prefix)
-    logger.info("prefix init             | %-24s |", prefix_init)
-    logger.info("prefix tokens           | %-24d |", model.prefix.shape[0])
-    logger.info("task                    | %-24s |", task)
-    logger.info("prompt                  | %-24s |", "none")
-    logger.info("dataset                 | %-24s |", dataset)
+    table = Table(caption="Task parameters", show_header=False)
+    table.add_row("model", model_path.split("/")[-1])
+    table.add_row("params", str(total))
+    table.add_row("trainable", str(trainable))
+    table.add_row("head", str(trainable - prefix))
+    table.add_row("prefix", str(prefix))
+    table.add_row("prefix init", prefix_init)
+    table.add_row("prefix tokens", str(model.prefix.shape[0]))
+    table.add_row("task", task)
+    table.add_row("prompt", "none")
+    table.add_row("dataset", dataset)
+    console.print(table)
 
     train(
         model=model,
