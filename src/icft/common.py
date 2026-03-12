@@ -5,6 +5,7 @@ from typing import Any
 
 import torch
 from datasets.dataset_dict import DatasetDict
+from mlflow import end_run, log_metrics, start_run
 from torch.nn import Module, Parameter
 from transformers import (
     AutoModelForCausalLM,
@@ -327,4 +328,8 @@ def train(
         compute_metrics=metrics_fn,
     )
 
+    start_run(run_name=run_name)
     trainer.train()
+    metrics = trainer.evaluate(data["test"], metric_key_prefix="test")  # type: ignore
+    log_metrics(metrics)
+    end_run()

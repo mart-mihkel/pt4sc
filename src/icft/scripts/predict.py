@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import cast
 
 import torch
+from mlflow import end_run, log_metrics, search_runs, start_run
+from mlflow.entities import Run
 from transformers import (
     AutoConfig,
     AutoModel,
@@ -49,15 +51,32 @@ def main(checkpoint: str, workers: int = 4):
         weights_only=False,
     )
 
-    args.report_to = "none"
-    args.eval_strategy = "no"
-
     trainer = Trainer(
         model=model,
         args=args,
+        train_dataset=data["train"],
+        eval_dataset=data["dev"],
         data_collator=init_collate_fn(tokenizer=tokenizer, task=params["task"]),
         compute_metrics=init_metrics_fn(tokenizer=tokenizer, task=params["task"]),
     )
 
-    pred = trainer.predict(data["test"])  # type: ignore
-    trainer.save_metrics("test", pred.metrics)
+    run_name = params["run_name"]
+    runs = search_runs(
+        filter_string=f"tags.mlflow.runName = '{run_name}'",
+        output_format="list",
+    )
+
+    runs = cast(list[Run], runs)
+    if len(runs) == 0:
+        raise ValueError(f"No run '{run_name}'")
+    elif len(runs) > 1:
+        logger.warning("found multiple runs '%s', picking one", run_name)
+        run = runs[0]
+    else:
+        logger.info("found existing run '%s'", run_name)
+        run = runs[0]
+
+    start_run(run_id=run.info.run_id)
+    metrics = trainer.evaluate(data["test"], metric_key_prefix="test")  # type: ignore
+    log_metrics(metrics)
+    end_run()
