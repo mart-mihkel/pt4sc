@@ -1,12 +1,18 @@
+from typing import cast
+
+from datasets.splits import Split
 from transformers import PreTrainedTokenizerFast
 
 from icft.datasets.multinerd import init_multinerd
 
-split = {
-    "train": "train[:100]",
-    "validation": "validation[:100]",
-    "test": "test[:100]",
-}
+split = cast(
+    Split,
+    {
+        "train": "train[:100]",
+        "validation": "validation[:100]",
+        "test": "test[:100]",
+    },
+)
 
 
 def test_multinerd_mmbert(mmbert_tokenizer: PreTrainedTokenizerFast):
@@ -16,7 +22,7 @@ def test_multinerd_mmbert(mmbert_tokenizer: PreTrainedTokenizerFast):
         prompt_mode="system",
         filter_en=False,
         workers=0,
-        split=split,  # type: ignore
+        split=split,
     )
 
     assert len(data["train"]) > 0
@@ -31,7 +37,7 @@ def test_multinerd_gpt2(gpt2_tokenizer):
         prompt_mode="system",
         filter_en=False,
         workers=0,
-        split=split,  # type: ignore
+        split=split,
     )
 
     assert len(data["train"]) > 0
@@ -46,7 +52,7 @@ def test_multinerd_t5(t5_tokenizer):
         prompt_mode="system",
         filter_en=False,
         workers=0,
-        split=split,  # type: ignore
+        split=split,
     )
 
     assert len(data["train"]) > 0

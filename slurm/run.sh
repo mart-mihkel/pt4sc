@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
-#SBATCH --job-name="gwen2"
 #SBATCH --output=out/slurm/%x-%j.out
-#SBATCH --time=96:00:00
+#SBATCH --job-name="mmbert-small"
+#SBATCH --gres=gpu:tesla:1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=120:00:00
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
-#SBATCH --mem=16GB
+#SBATCH --mem=64GB
 
 set -euo pipefail
 mkdir -p out
 
-# encoder
-
-# BASE=jhu-clsp/mmBERT-small
+BASE=jhu-clsp/mmBERT-small
 # BASE=jhu-clsp/mmBERT-base
-
-# decoder
 
 # BASE=openai-community/gpt2
 # BASE=openai-community/gpt2-medium
@@ -28,9 +25,7 @@ mkdir -p out
 # BASE=EleutherAI/pythia-1.4b
 
 # BASE=Qwen/Qwen2.5-0.5B
-BASE=Qwen/Qwen2.5-1.5B
-
-# encoder-decoder
+# BASE=Qwen/Qwen2.5-1.5B
 
 # BASE=google-t5/t5-small
 # BASE=google-t5/t5-base
@@ -44,11 +39,13 @@ BASE=Qwen/Qwen2.5-1.5B
 # BASE=google/flan-t5-xl
 # BASE=google/flan-t5-xxl
 
+# export MLFLOW_TRACKING_URI=
+
 MODEL=$(echo $BASE | awk -F / '{print $2}')
 DATASET=multinerd
 LOG_LEVEL=DEBUG
 TASK=seq-cls
-BATCH_SIZE=8
+BATCH_SIZE=64
 WORKERS=4
 EPOCHS=1
 

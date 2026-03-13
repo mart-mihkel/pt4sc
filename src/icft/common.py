@@ -5,11 +5,14 @@ from typing import Any, cast
 
 import torch
 from datasets.dataset_dict import DatasetDict
-from mlflow import end_run, log_metrics, start_run
+from datasets.splits import Split
+from mlflow import end_run, start_run
 from rich.table import Table
 from torch.nn import Module, Parameter
 from torch.utils.data import Dataset
 from transformers import (
+    AutoConfig,
+    AutoModel,
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
     AutoModelForSequenceClassification,
@@ -17,6 +20,7 @@ from transformers import (
     DataCollatorForSeq2Seq,
     DataCollatorWithPadding,
     EvalPrediction,
+    PreTrainedModel,
     PreTrainedTokenizerFast,
 )
 from transformers.trainer import Trainer
@@ -33,10 +37,12 @@ from icft.metrics import (
 )
 from icft.models import (
     PTDecoderModel,
+    PTDecoderModelConfig,
     PTEncoderDecoderModel,
+    PTEncoderDecoderModelConfig,
     PTEncoderModel,
+    PTEncoderModelConfig,
     PTModel,
-    PTModelConfig,
 )
 from icft.types import DatasetName, PrefixInit, PromptMode, Task
 
@@ -47,14 +53,14 @@ def init_model(
     tokenizer: PreTrainedTokenizerFast,
     model_path: str,
     data_info: DatasetInfo,
-) -> Module:
+) -> PreTrainedModel:
+    model_info = {"missing_keys": set()}
     if task == "seq2seq":
         logger.debug("load seq2seq pretrained model %s", model_path)
         model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
-        info = {"missing_keys": set()}
     elif task == "seq-cls":
         logger.debug("load seq-cls pretrained model %s", model_path)
-        model, info = AutoModelForSequenceClassification.from_pretrained(
+        model, model_info = AutoModelForSequenceClassification.from_pretrained(
             model_path,
             output_loading_info=True,
             num_labels=len(data_info["id2label"]),
@@ -64,7 +70,6 @@ def init_model(
     elif task == "causal-lm":
         logger.debug("load causal-lm pretrained model %s", model_path)
         model = AutoModelForCausalLM.from_pretrained(model_path)
-        info = {"missing_keys": set()}
     else:
         raise NotImplementedError(f"Task '{task}'")
 
@@ -72,9 +77,19 @@ def init_model(
         model.config.pad_token_id = tokenizer.eos_token_id
 
     if head_only:
-        freeze(model=model, skip=info["missing_keys"])
+        freeze(model=model, skip=model_info["missing_keys"])
 
     return model
+
+
+def load_pt_model(checkpoint: str) -> PTModel:
+    logger.debug("load pt-model from checkpoint")
+    config = AutoConfig.from_pretrained(checkpoint, local_files_only=True)
+    return AutoModel.from_pretrained(
+        checkpoint,
+        config=config,
+        local_files_only=True,
+    )
 
 
 def init_pt_model(
@@ -85,13 +100,7 @@ def init_pt_model(
     data_info: DatasetInfo,
 ) -> PTModel:
     if "checkpoint" in model_path:
-        logger.debug("load pt-model from checkpoint")
-        config = PTModelConfig.from_pretrained(model_path, local_files_only=True)
-        return PTModel.from_pretrained(
-            model_path,
-            config=config,
-            local_files_only=True,
-        )
+        return load_pt_model(checkpoint=model_path)
 
     cls_token = tokenizer.cls_token or "" if task == "seq-cls" else ""
     sys = tokenizer(
@@ -101,62 +110,56 @@ def init_pt_model(
     system_ids = torch.tensor(sys["input_ids"])
     num_virtual_tokens = len(system_ids)
 
-    if task == "seq2seq":
-        logger.debug("load seq2seq base model %s", model_path)
-        base = AutoModelForSeq2SeqLM.from_pretrained(model_path)
-        info = {"missing_keys": set()}
-        config = PTModelConfig(
-            task=task,
-            pretrained_model=model_path,
-            num_virtual_tokens=num_virtual_tokens,
-        )
-    elif task == "seq-cls":
-        logger.debug("load seq-cls base model %s", model_path)
-        base, info = AutoModelForSequenceClassification.from_pretrained(
-            model_path,
-            output_loading_info=True,
-            num_labels=len(data_info["id2label"]),
-            id2label=data_info["id2label"],
-            label2id=data_info["label2id"],
-        )
-
-        config = PTModelConfig(
-            task=task,
-            pretrained_model=model_path,
-            num_virtual_tokens=num_virtual_tokens,
-            num_labels=len(data_info["id2label"]),
-            id2label=data_info["id2label"],
-            label2id=data_info["label2id"],
-        )
-    elif task == "causal-lm":
-        logger.debug("load causal-lm base model %s", model_path)
-        base = AutoModelForCausalLM.from_pretrained(model_path)
-        info = {"missing_keys": set()}
-        config = PTModelConfig(
-            task=task,
-            pretrained_model=model_path,
-            num_virtual_tokens=num_virtual_tokens,
-        )
-    else:
-        raise NotImplementedError(f"Task '{task}'")
+    base = init_model(
+        task=task,
+        head_only=True,
+        tokenizer=tokenizer,
+        model_path=model_path,
+        data_info=data_info,
+    )
 
     model_type = base.config.model_type
-    if model_type in {"gpt2", "gpt_neox", "gemma", "qwen2"}:
+    if model_type in {"bert", "distilbert", "roberta", "modernbert"}:
+        logger.debug("init pt encoder model")
+        config = PTEncoderModelConfig(
+            task=task,
+            pretrained_model=model_path,
+            num_virtual_tokens=num_virtual_tokens,
+            num_labels=len(data_info["id2label"]),
+            id2label=data_info["id2label"],
+            label2id=data_info["label2id"],
+        )
+
+        model = PTEncoderModel(config=config)
+    elif model_type in {"gpt2", "gpt_neox", "gemma", "qwen2"}:
         logger.debug("init pt decoder model")
+        config = PTDecoderModelConfig(
+            task=task,
+            pretrained_model=model_path,
+            num_virtual_tokens=num_virtual_tokens,
+            num_labels=len(data_info["id2label"]),
+            id2label=data_info["id2label"],
+            label2id=data_info["label2id"],
+        )
+
         model = PTDecoderModel(config=config)
     elif model_type in {"t5", "t5gemma", "t5gemma2"}:
         logger.debug("init pt encoder-decoder model")
+        config = PTEncoderDecoderModelConfig(
+            task=task,
+            pretrained_model=model_path,
+            num_virtual_tokens=num_virtual_tokens,
+            num_labels=len(data_info["id2label"]),
+            id2label=data_info["id2label"],
+            label2id=data_info["label2id"],
+        )
+
         model = PTEncoderDecoderModel(config=config)
-    elif model_type in {"bert", "distilbert", "roberta", "modernbert"}:
-        logger.debug("init pt encoder model")
-        model = PTEncoderModel(config=config)
     else:
         raise NotImplementedError(f"PT model for base '{model_type}'")
 
     logger.debug("load pretrained weights")
     model.base.load_state_dict(base.state_dict(), strict=False)
-
-    freeze(model=model.base, skip=info["missing_keys"])
 
     emb = model.base.get_input_embeddings()
     if prefix_init == "random":
@@ -232,6 +235,7 @@ def init_data(
     dataset: DatasetName,
     prompt_mode: PromptMode,
     workers: int,
+    split: Split | None = None,
 ) -> tuple[DatasetDict, DatasetInfo]:
     logger.debug("init %s dataset", dataset)
     if dataset == "multinerd":
@@ -241,6 +245,7 @@ def init_data(
             task=task,
             workers=workers,
             filter_en=True,
+            split=split,
         )
     elif dataset == "estner":
         data, info = init_estner(
@@ -248,6 +253,7 @@ def init_data(
             prompt_mode=prompt_mode,
             task=task,
             workers=workers,
+            split=split,
         )
     elif dataset == "superglue":
         data, info = init_superglue(
@@ -255,6 +261,7 @@ def init_data(
             prompt_mode=prompt_mode,
             task=task,
             workers=workers,
+            split=split,
         )
     else:
         raise NotImplementedError(f"Dataset '{dataset}'")
@@ -342,6 +349,5 @@ def train(
 
     start_run(run_name=run_name)
     trainer.train()
-    metrics = trainer.evaluate(cast(Dataset, data["test"]), metric_key_prefix="test")
-    log_metrics(metrics)
+    trainer.evaluate(cast(Dataset, data["test"]), metric_key_prefix="test")
     end_run()

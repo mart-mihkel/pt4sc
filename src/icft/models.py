@@ -3,6 +3,7 @@ from torch import Tensor
 from torch.nn import CrossEntropyLoss, Parameter
 from transformers import (
     AutoConfig,
+    AutoModel,
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
     AutoModelForSequenceClassification,
@@ -131,7 +132,13 @@ class PTModel(PreTrainedModel):
         return torch.cat([prefix_labels, labels], dim=1)
 
 
+class PTEncoderModelConfig(PTModelConfig):
+    model_type = "pt_encoder"
+
+
 class PTEncoderModel(PTModel):
+    config_class = PTEncoderModelConfig
+
     def forward(
         self,
         input_ids: Tensor,
@@ -145,7 +152,13 @@ class PTEncoderModel(PTModel):
         return self.base(inputs_embeds=inputs, attention_mask=attn, labels=labels)
 
 
+class PTDecoderModelConfig(PTModelConfig):
+    model_type = "pt_decoder"
+
+
 class PTDecoderModel(PTModel):
+    config_class = PTDecoderModelConfig
+
     def forward(
         self,
         input_ids: Tensor,
@@ -202,7 +215,13 @@ class PTDecoderModel(PTModel):
         return SequenceClassifierOutput(loss=loss, logits=pooled_logits)
 
 
+class PTEncoderDecoderModelConfig(PTModelConfig):
+    model_type = "pt_encoder_decoder"
+
+
 class PTEncoderDecoderModel(PTModel):
+    config_class = PTEncoderDecoderModelConfig
+
     def forward(
         self,
         input_ids: Tensor,
@@ -280,3 +299,12 @@ class PTEncoderDecoderModel(PTModel):
         )
 
         return SequenceClassifierOutput(loss=loss, logits=pooled_logits)
+
+
+AutoConfig.register(PTEncoderModelConfig.model_type, PTEncoderModelConfig)
+AutoConfig.register(PTDecoderModelConfig.model_type, PTDecoderModelConfig)
+AutoConfig.register(PTEncoderDecoderModelConfig.model_type, PTEncoderDecoderModelConfig)
+
+AutoModel.register(PTEncoderModelConfig, PTEncoderModel)
+AutoModel.register(PTDecoderModelConfig, PTDecoderModel)
+AutoModel.register(PTEncoderDecoderModelConfig, PTEncoderDecoderModel)

@@ -148,7 +148,7 @@ def _tokenize_seq_cls(
             prompts.append(prompt)
             labels.append(tag_id)
 
-    enc = tokenizer(prompts, add_special_tokens=False)
+    enc = tokenizer(prompts, add_special_tokens=False, truncation=True)
     enc["labels"] = labels
 
     return enc
@@ -170,8 +170,8 @@ def _tokenize_seq2seq(
             prompts.append(prompt)
             labels.append(f"{id2label[tag_id]}{tokenizer.eos_token}")
 
-    enc = tokenizer(prompts, add_special_tokens=False)
-    labels_enc = tokenizer(labels, add_special_tokens=False)
+    enc = tokenizer(prompts, add_special_tokens=False, truncation=True)
+    labels_enc = tokenizer(labels, add_special_tokens=False, truncation=True)
     enc["labels"] = labels_enc["input_ids"]
 
     return enc
@@ -193,8 +193,8 @@ def _tokenize_causal_lm(
             prompt = _prompt_template(sentence=sentence, token=token)
             answer = f"{id2label[tag_id]}{tokenizer.eos_token}"
 
-            prompt_enc = tokenizer(prompt, add_special_tokens=False)
-            answer_enc = tokenizer(answer, add_special_tokens=False)
+            prompt_enc = tokenizer(prompt, add_special_tokens=False, truncation=True)
+            answer_enc = tokenizer(answer, add_special_tokens=False, truncation=True)
 
             prompt_tokens = len(prompt_enc["input_ids"])
 
@@ -257,6 +257,9 @@ def init_multinerd(
 
     data = cast(DatasetDict, data)
 
+    if "validation" in data:
+        data["dev"] = data.pop("validation")
+
     if filter_en:
         logger.debug("filter multinerd english")
         data = data.filter(_filter_english, batched=True)
@@ -276,7 +279,7 @@ def init_multinerd(
         batched=True,
         fn_kwargs=dict(tokenizer=tokenizer),
         num_proc=workers,
-        remove_columns=data["train"].column_names,
+        remove_columns=next(iter(data.values())).column_names,
     )
 
     sys = init_system_prompt(
@@ -300,7 +303,5 @@ def init_multinerd(
         label2id=cast(dict[str, int], label2id),
         system_prompt=system_prompt,
     )
-
-    data["dev"] = data.pop("validation")
 
     return data, info

@@ -4,9 +4,11 @@ from icft.common import init_collate_fn
 from icft.datasets.multinerd import DatasetInfo
 from icft.models import (
     PTDecoderModel,
+    PTDecoderModelConfig,
     PTEncoderDecoderModel,
+    PTEncoderDecoderModelConfig,
     PTEncoderModel,
-    PTModelConfig,
+    PTEncoderModelConfig,
 )
 from icft.scripts.prompt_tune import init_pt_model
 
@@ -38,7 +40,7 @@ def test_pt_bert(mmbert_tokenizer: PreTrainedTokenizerFast):
         {"input_ids": [cls, 3], "label": 1},
     ]
 
-    config = PTModelConfig(
+    config = PTEncoderModelConfig(
         task="seq-cls",
         pretrained_model="jhu-clsp/mmBERT-base",
         num_virtual_tokens=10,
@@ -63,7 +65,7 @@ def test_pt_gpt2_causal_lm(gpt2_tokenizer: PreTrainedTokenizerFast):
         {"input_ids": [3, 4, eos], "labels": [-100, 4, eos]},
     ]
 
-    config = PTModelConfig(
+    config = PTDecoderModelConfig(
         task="causal-lm",
         pretrained_model="openai-community/gpt2",
         num_virtual_tokens=10,
@@ -85,7 +87,7 @@ def test_pt_gpt2_seq_cls(gpt2_tokenizer: PreTrainedTokenizerFast):
         {"input_ids": [3], "label": 1},
     ]
 
-    config = PTModelConfig(
+    config = PTDecoderModelConfig(
         task="seq-cls",
         pretrained_model="openai-community/gpt2",
         num_virtual_tokens=10,
@@ -111,7 +113,7 @@ def test_pt_t5_seq2seq(t5_tokenizer: PreTrainedTokenizerFast):
         {"input_ids": [123, eos], "labels": [64, eos]},
     ]
 
-    config = PTModelConfig(
+    config = PTEncoderDecoderModelConfig(
         task="seq2seq",
         pretrained_model="google-t5/t5-small",
         num_virtual_tokens=10,
@@ -132,7 +134,7 @@ def test_pt_t5_seq_cls(t5_tokenizer: PreTrainedTokenizerFast):
         {"input_ids": [3], "label": 1},
     ]
 
-    config = PTModelConfig(
+    config = PTEncoderDecoderModelConfig(
         task="seq-cls",
         pretrained_model="google-t5/t5-small",
         num_virtual_tokens=10,

@@ -51,7 +51,7 @@ def _tokenize_seq_cls(
         prompts.append(prompt)
         labels.append(label)
 
-    enc = tokenizer(prompts, add_special_tokens=False)
+    enc = tokenizer(prompts, add_special_tokens=False, truncation=True)
     enc["labels"] = labels
 
     return enc
@@ -71,8 +71,8 @@ def _tokenize_seq2seq(
         label_str = "true" if label == 1 else "false"
         labels.append(f"{label_str}{tokenizer.eos_token}")
 
-    enc = tokenizer(prompts, add_special_tokens=False)
-    labels_enc = tokenizer(labels, add_special_tokens=False)
+    enc = tokenizer(prompts, add_special_tokens=False, truncation=True)
+    labels_enc = tokenizer(labels, add_special_tokens=False, truncation=True)
     enc["labels"] = labels_enc["input_ids"]
 
     return enc
@@ -92,8 +92,8 @@ def _tokenize_causal_lm(
         label_str = "true" if label == 1 else "false"
         answer = f"{label_str}{tokenizer.eos_token}"
 
-        prompt_enc = tokenizer(prompt, add_special_tokens=False)
-        answer_enc = tokenizer(answer, add_special_tokens=False)
+        prompt_enc = tokenizer(prompt, add_special_tokens=False, truncation=True)
+        answer_enc = tokenizer(answer, add_special_tokens=False, truncation=True)
 
         prompt_tokens = len(prompt_enc["input_ids"])
 
@@ -141,7 +141,7 @@ def init_superglue(
         batched=True,
         fn_kwargs=dict(tokenizer=tokenizer),
         num_proc=workers,
-        remove_columns=data["train"].column_names,
+        remove_columns=next(iter(data.values())).column_names,
     )
 
     sys = init_system_prompt(

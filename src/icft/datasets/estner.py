@@ -91,7 +91,7 @@ def _tokenize_seq_cls(
             prompts.append(prompt)
             labels.append(label2id[tag])
 
-    enc = tokenizer(prompts, add_special_tokens=False)
+    enc = tokenizer(prompts, add_special_tokens=False, truncation=True)
     enc["labels"] = labels
 
     return enc
@@ -113,8 +113,8 @@ def _tokenize_seq2seq(
             prompts.append(prompt)
             labels.append(f"{tag}{tokenizer.eos_token}")
 
-    enc = tokenizer(prompts, add_special_tokens=False)
-    labels_enc = tokenizer(labels, add_special_tokens=False)
+    enc = tokenizer(prompts, add_special_tokens=False, truncation=True)
+    labels_enc = tokenizer(labels, add_special_tokens=False, truncation=True)
     enc["labels"] = labels_enc["input_ids"]
 
     return enc
@@ -136,8 +136,8 @@ def _tokenize_causal_lm(
             prompt = _prompt_template(sentence=sentence, token=token)
             answer = f"{tag}{tokenizer.eos_token}"
 
-            prompt_enc = tokenizer(prompt, add_special_tokens=False)
-            answer_enc = tokenizer(answer, add_special_tokens=False)
+            prompt_enc = tokenizer(prompt, add_special_tokens=False, truncation=True)
+            answer_enc = tokenizer(answer, add_special_tokens=False, truncation=True)
 
             prompt_tokens = len(prompt_enc["input_ids"])
 
@@ -202,7 +202,7 @@ def init_estner(
         batched=True,
         fn_kwargs=dict(tokenizer=tokenizer),
         num_proc=workers,
-        remove_columns=data["train"].column_names,
+        remove_columns=next(iter(data.values())).column_names,
     )
 
     sys = init_system_prompt(
