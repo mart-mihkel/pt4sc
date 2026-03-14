@@ -46,23 +46,34 @@ DATASET=multinerd
 LOG_LEVEL=DEBUG
 TASK=seq-cls
 BATCH_SIZE=64
-WORKERS=4
+WORKERS=0
 EPOCHS=1
 
 uv sync
 
-# fine-tune
-LR=5e-5
-
 uv run cli --log-level $LOG_LEVEL fine-tune \
-    --task $TASK --dataset $DATASET --prompt-mode system --no-head-only \
-    --model $BASE --run-name $MODEL-ft-system-$DATASET --no-grad-chkpts \
-    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
-
-# prompt-tune
-LR=1e-3
+    --model $BASE \
+    --run-name $MODEL-ft-system-$DATASET \
+    --task $TASK \
+    --dataset $DATASET \
+    --prompt-mode system \
+    --no-head-only \
+    --workers $WORKERS \
+    --epochs $EPOCHS \
+    --batch-size $BATCH_SIZE \
+    --lr 5e-5 \
+    --no-grad-chkpts \
+    --mlflow-tracking
 
 uv run cli --log-level $LOG_LEVEL prompt-tune \
-    --task $TASK --dataset $DATASET --prefix-init pretrained \
-    --model $BASE --run-name $MODEL-pt-pretrained-$DATASET --no-grad-chkpts \
-    --epochs $EPOCHS --lr $LR --batch-size $BATCH_SIZE --workers $WORKERS
+    --model $BASE \
+    --run-name $MODEL-pt-pretrained-$DATASET \
+    --task $TASK \
+    --dataset $DATASET \
+    --prefix-init pretrained \
+    --workers $WORKERS \
+    --epochs $EPOCHS \
+    --batch-size $BATCH_SIZE \
+    --lr 1e-3 \
+    --no-grad-chkpts \
+    --mlflow-tracking

@@ -19,18 +19,19 @@ from icft.common import (
 from icft.logging import console
 
 
-def ft(
+def fine_tune(
+    model_path: str,
+    run_name: str,
     task: Task,
     dataset: DatasetName,
     prompt_mode: PromptMode,
     head_only: bool,
-    model_path: str,
-    run_name: str,
+    workers: int,
     epochs: int,
     batch_size: int,
     lr: float,
-    workers: int,
     grad_chkpts: bool,
+    mlflow_tracking: bool = True,
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     tokenizer = cast(PreTrainedTokenizerFast, tokenizer)
@@ -76,4 +77,5 @@ def ft(
         lr=lr,
         batch_size=batch_size,
         grad_chkpts=grad_chkpts,
+        mlflow_tracking=mlflow_tracking,
     )

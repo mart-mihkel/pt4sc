@@ -289,6 +289,7 @@ def train(
     lr: float,
     batch_size: int,
     grad_chkpts: bool,
+    mlflow_tracking: bool = True,
 ):
     have_cuda = torch.cuda.is_available()
     optim = "adamw_8bit" if have_cuda else "adamw_torch_fused"
@@ -313,13 +314,14 @@ def train(
     table.add_row("train steps", str(train_steps))
     table.add_row("logging steps", str(logging_steps))
     table.add_row("eval steps", str(eval_steps))
+    table.add_row("mlflow tracking", str(mlflow_tracking))
     console.print(table)
 
     logger.debug("init trainer")
 
     args = TrainingArguments(
         run_name=run_name,
-        report_to="mlflow",
+        report_to="mlflow" if mlflow_tracking else "none",
         output_dir=f"out/{run_name}",
         save_strategy="epoch",
         eval_strategy="steps",

@@ -17,17 +17,18 @@ from icft.logging import console
 from icft.types import DatasetName, PrefixInit, Task
 
 
-def pt(
+def prompt_tune(
+    model_path: str,
+    run_name: str,
     task: Task,
     dataset: DatasetName,
     prefix_init: PrefixInit,
-    model_path: str,
-    run_name: str,
+    workers: int,
     epochs: int,
     batch_size: int,
     lr: float,
-    workers: int,
     grad_chkpts: bool,
+    mlflow_tracking: bool = True,
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     tokenizer = cast(PreTrainedTokenizerFast, tokenizer)
@@ -78,4 +79,5 @@ def pt(
         lr=lr,
         batch_size=batch_size,
         grad_chkpts=grad_chkpts,
+        mlflow_tracking=mlflow_tracking,
     )

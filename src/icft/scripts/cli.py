@@ -3,6 +3,8 @@ from typing import Annotated, Any, Literal
 
 from typer import Context, Option, Typer
 
+from icft.types import DatasetName, PrefixInit, PromptMode, Task
+
 app = Typer(no_args_is_help=True, add_completion=False)
 
 
@@ -47,33 +49,35 @@ def callback(log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"):
 @timed
 def fine_tune(
     ctx: Context,
-    task: Annotated[Literal["seq2seq", "seq-cls", "causal-lm"], Option()],
-    dataset: Annotated[Literal["multinerd", "estner", "superglue"], Option()],
-    prompt_mode: Annotated[Literal["system", "random", "none"], Option()],
-    head_only: Annotated[bool, Option()],
     model: Annotated[str, Option()],
     run_name: Annotated[str, Option()],
-    grad_chkpts: bool = False,
+    task: Annotated[Task.__value__, Option()],
+    dataset: Annotated[DatasetName.__value__, Option()],
+    prompt_mode: Annotated[PromptMode.__value__, Option()],
+    head_only: Annotated[bool, Option()],
+    workers: int = 0,
     epochs: int = 1,
-    lr: float = 5e-5,
     batch_size: int = 8,
-    workers: int = 4,
+    lr: float = 5e-5,
+    grad_chkpts: bool = False,
+    mlflow_tracking: bool = False,
 ):
-    from icft.scripts.fine_tune import ft
+    from icft.scripts.fine_tune import fine_tune
 
     save_params(ctx.params, run_name)
-    ft(
+    fine_tune(
+        model_path=model,
+        run_name=run_name,
         task=task,
         dataset=dataset,
         prompt_mode=prompt_mode,
         head_only=head_only,
-        model_path=model,
-        run_name=run_name,
-        epochs=epochs,
-        lr=lr,
-        batch_size=batch_size,
         workers=workers,
+        epochs=epochs,
+        batch_size=batch_size,
+        lr=lr,
         grad_chkpts=grad_chkpts,
+        mlflow_tracking=mlflow_tracking,
     )
 
 
@@ -81,31 +85,33 @@ def fine_tune(
 @timed
 def prompt_tune(
     ctx: Context,
-    task: Annotated[Literal["seq2seq", "seq-cls", "causal-lm"], Option()],
-    dataset: Annotated[Literal["multinerd", "estner", "superglue"], Option()],
-    prefix_init: Annotated[Literal["pretrained", "labels", "random"], Option()],
     model: Annotated[str, Option()],
     run_name: Annotated[str, Option()],
-    grad_chkpts: bool = False,
+    task: Annotated[Task.__value__, Option()],
+    dataset: Annotated[DatasetName.__value__, Option()],
+    prefix_init: Annotated[PrefixInit.__value__, Option()],
+    workers: int = 0,
     epochs: int = 1,
-    lr: float = 5e-5,
     batch_size: int = 8,
-    workers: int = 4,
+    lr: float = 5e-5,
+    grad_chkpts: bool = False,
+    mlflow_tracking: bool = False,
 ):
-    from icft.scripts.prompt_tune import pt
+    from icft.scripts.prompt_tune import prompt_tune
 
     save_params(ctx.params, run_name)
-    pt(
+    prompt_tune(
+        model_path=model,
+        run_name=run_name,
         task=task,
         dataset=dataset,
         prefix_init=prefix_init,
-        model_path=model,
-        run_name=run_name,
-        epochs=epochs,
-        lr=lr,
-        batch_size=batch_size,
         workers=workers,
+        epochs=epochs,
+        batch_size=batch_size,
+        lr=lr,
         grad_chkpts=grad_chkpts,
+        mlflow_tracking=mlflow_tracking,
     )
 
 
