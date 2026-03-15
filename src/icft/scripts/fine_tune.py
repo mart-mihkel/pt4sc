@@ -31,7 +31,7 @@ def fine_tune(
     batch_size: int,
     lr: float,
     grad_chkpts: bool,
-    mlflow_tracking: bool = True,
+    mlflow_tracking: bool,
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     tokenizer = cast(PreTrainedTokenizerFast, tokenizer)
@@ -58,13 +58,16 @@ def fine_tune(
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    table = Table(caption="Task parameters", show_header=False, width=80)
-    table.add_row("model", model_path.split("/")[-1])
-    table.add_row("params", str(total))
-    table.add_row("trainable", str(trainable))
-    table.add_row("task", task)
-    table.add_row("prompt", prompt_mode)
-    table.add_row("dataset", dataset)
+    table = Table("Task parameter", "Value")
+    table.add_row("Model", model_path)
+    table.add_row("Dataset", dataset)
+    table.add_row("Task", task)
+    table.add_section()
+    table.add_row("System prompt mode", prompt_mode)
+    table.add_row("Head only", str(head_only))
+    table.add_section()
+    table.add_row("Total parameters", str(total))
+    table.add_row("Trainable parameters", str(trainable))
     console.print(table)
 
     train(

@@ -6,8 +6,7 @@ from typing import Any, cast
 import torch
 from datasets.dataset_dict import DatasetDict
 from datasets.splits import Split
-from mlflow import end_run, start_run
-from rich.table import Table
+from mlflow import start_run
 from torch.nn import Module, Parameter
 from torch.utils.data import Dataset
 from transformers import (
@@ -29,7 +28,7 @@ from transformers.training_args import TrainingArguments
 from icft.datasets.estner import init_estner
 from icft.datasets.multinerd import DatasetInfo, init_multinerd
 from icft.datasets.superglue import init_superglue
-from icft.logging import console, logger
+from icft.logging import logger
 from icft.metrics import (
     compute_metrics_causal_lm,
     compute_metrics_seq2seq,
@@ -283,13 +282,13 @@ def train(
     model: Module,
     data: DatasetDict,
     collate_fn: DataCollator,
-    metrics_fn: Callable,
+    metrics_fn: Callable[[EvalPrediction], dict[str, int | float]],
     run_name: str,
     epochs: int,
     lr: float,
     batch_size: int,
     grad_chkpts: bool,
-    mlflow_tracking: bool = True,
+    mlflow_tracking: bool,
 ):
     have_cuda = torch.cuda.is_available()
     optim = "adamw_8bit" if have_cuda else "adamw_torch_fused"
@@ -299,25 +298,21 @@ def train(
     eval_steps = max(1, train_steps // 5)
     logging_steps = max(1, train_steps // 100)
 
-    table = Table(caption="Training arguments", show_header=False, width=80)
-    table.add_row("CUDA", str(have_cuda))
-    table.add_row("optimizer", optim)
-    table.add_row("epochs", str(epochs))
-    table.add_row("learning rate", str(lr))
-    table.add_row("grad checkpoints", str(grad_chkpts))
-    table.add_row("grad accumulation steps", str(grad_acc_steps))
-    table.add_row("batch size", str(batch_size))
-    table.add_row("effective batch size", str(effective_batch_size))
-    table.add_row("train samples", str(len(data["train"])))
-    table.add_row("dev samples", str(len(data["dev"])))
-    table.add_row("test samples", str(len(data["test"])))
-    table.add_row("train steps", str(train_steps))
-    table.add_row("logging steps", str(logging_steps))
-    table.add_row("eval steps", str(eval_steps))
-    table.add_row("mlflow tracking", str(mlflow_tracking))
-    console.print(table)
+    logger.debug("%shave cuda", "" if have_cuda else "don't")
 
-    logger.debug("init trainer")
+    logger.debug("batch size of %d", batch_size)
+    logger.debug(
+        "effective batch size of %d with %d gradient accumulation steps",
+        effective_batch_size,
+        grad_acc_steps,
+    )
+
+    logger.debug("%d train samples", len(data["train"]))
+    logger.debug("%d dev samples", len(data["dev"]))
+    logger.debug("%d test samples", len(data["test"]))
+
+    logger.debug("%d train steps", train_steps)
+    logger.debug("%d eval steps", eval_steps)
 
     args = TrainingArguments(
         run_name=run_name,
@@ -349,7 +344,6 @@ def train(
         compute_metrics=metrics_fn,
     )
 
-    start_run(run_name=run_name)
-    trainer.train()
-    trainer.evaluate(cast(Dataset, data["test"]), metric_key_prefix="test")
-    end_run()
+    with start_run(run_name=run_name):
+        trainer.train()
+        trainer.evaluate(cast(Dataset, data["test"]), metric_key_prefix="test")
