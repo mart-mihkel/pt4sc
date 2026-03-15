@@ -1,3 +1,5 @@
+import os
+
 from rich.table import Table
 
 from icft.common import (
@@ -25,8 +27,8 @@ def prompt_tune(
     grad_chkpts: bool,
     mlflow_tracking_uri: str | None,
 ):
+    os.makedirs("out", exist_ok=True)
     tokenizer = init_tokenizer(model_path=model_path)
-
     data, info = init_data(
         tokenizer=tokenizer,
         task=task,

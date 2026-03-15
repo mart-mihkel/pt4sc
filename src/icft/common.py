@@ -6,7 +6,7 @@ from typing import Any, cast
 import torch
 from datasets.dataset_dict import DatasetDict
 from datasets.splits import Split
-from mlflow import end_run, set_tracking_uri, start_run
+from mlflow import end_run, set_experiment, set_tracking_uri, start_run
 from torch.nn import Module, Parameter
 from torch.utils.data import Dataset
 from transformers import (
@@ -309,6 +309,7 @@ def train(
     train_steps = ceil(len(data["train"]) / effective_batch_size) * epochs
     eval_steps = max(1, train_steps // 5)
     logging_steps = max(1, train_steps // 100)
+    out_dir = f"out/{run_name}"
 
     logger.debug("%shave cuda", "" if have_cuda else "don't ")
 
@@ -332,8 +333,8 @@ def train(
     args = TrainingArguments(
         run_name=run_name,
         report_to="mlflow" if mlflow_tracking_uri else "none",
-        output_dir=f"out/{run_name}",
-        save_strategy="epoch",
+        output_dir=out_dir,
+        save_strategy="no",
         eval_strategy="steps",
         eval_steps=eval_steps,
         logging_steps=logging_steps,
@@ -351,8 +352,8 @@ def train(
     )
 
     trainer = Trainer(
-        model,
         args=args,
+        model=model,
         train_dataset=data["train"],
         eval_dataset=data["dev"],
         data_collator=collate_fn,
@@ -360,9 +361,12 @@ def train(
     )
 
     if mlflow_tracking_uri is not None:
-        logger.debug("tracking experiment at '%s'", mlflow_tracking_uri)
+        logger.debug("tracking experiment 'icft' at '%s'", mlflow_tracking_uri)
         set_tracking_uri(mlflow_tracking_uri)
+        set_experiment("icft")
         start_run(run_name=run_name)
+    else:
+        logger.warning("no experiment tracking configured")
 
     logger.debug("start trainer")
     trainer.train()
@@ -372,6 +376,8 @@ def train(
         trainer.evaluate(test, metric_key_prefix="test")
     else:
         logger.warning("skip evalatuaion, no test data")
+
+    trainer.save_model(out_dir)
 
     if mlflow_tracking_uri is not None:
         end_run()
