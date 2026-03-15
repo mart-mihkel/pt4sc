@@ -3,34 +3,34 @@ name = "icft"
 version = "0.1.0"
 description = "In-Context Fine-Tuning"
 readme = "README.md"
-requires-python = ">=3.13.7"
+requires-python = "~=3.13.11"
 dependencies = [
-    "bitsandbytes>=0.49.2",
-    "transformers>=5.3.0",
-    "scikit-learn>=1.8.0",
-    "accelerate>=1.13.0",
-    "rouge-score>=0.1.2",
-    "datasets>=4.5.0",
-    "evaluate>=0.4.6",
-    "mlflow>=3.10.1",
-    "typer>=0.24.1",
-    "torch>=2.10.0",
-    "nltk>=3.9.3",
+    "bitsandbytes~=0.49.2",
+    "transformers~=5.3.0",
+    "scikit-learn~=1.8.0",
+    "accelerate~=1.13.0",
+    "rouge-score~=0.1.2",
+    "datasets~=4.5.0",
+    "evaluate~=0.4.6",
+    "mlflow~=3.10.1",
+    "typer~=0.24.1",
+    "torch~=2.10.0",
+    "nltk~=3.9.3",
 ]
 
 [dependency-groups]
 dev = [
-    "marimo>=0.20.4",
-    "pytest>=9.0.2",
-    "ruff>=0.15.6",
-    "ty>=0.0.23",
+    "marimo~=0.20.4",
+    "pytest~=9.0.2",
+    "ruff~=0.15.6",
+    "ty~=0.0.23",
 ]
 
 [project.scripts]
 cli = "icft.scripts.cli:app"
 
 [build-system]
-requires = ["hatchling>=1.29"]
+requires = ["hatchling~=1.29"]
 build-backend = "hatchling.build"
 
 [tool.ruff.lint]
