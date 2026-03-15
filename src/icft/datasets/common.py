@@ -20,6 +20,7 @@ def prepend_system_tokens(enc: BatchEncoding, sys: BatchEncoding) -> BatchEncodi
     it = zip(
         cast(Iterable, enc["input_ids"]),
         cast(Iterable, enc["attention_mask"]),
+        strict=True,
     )
 
     for _ids, _attn in it:

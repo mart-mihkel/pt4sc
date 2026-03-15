@@ -34,4 +34,4 @@ requires = ["hatchling~=1.29"]
 build-backend = "hatchling.build"
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "I", "UP", "RUF"]
+select = ["A", "F", "E", "W", "I", "C4", "FA", "UP", "RUF", "SIM", "ARG"]

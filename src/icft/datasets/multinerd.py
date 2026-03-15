@@ -139,11 +139,11 @@ def _tokenize_seq_cls(
     prompts: list[str] = []
     labels: list[int] = []
 
-    for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"]):
+    for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"], strict=True):
         sentence = " ".join(tokens)
         tokens, tag_ids = _join_spans(tokens=tokens, tag_ids=tag_ids)
 
-        for token, tag_id in zip(tokens, tag_ids):
+        for token, tag_id in zip(tokens, tag_ids, strict=True):
             prompt = _prompt_template(sentence=sentence, token=token)
             prompts.append(prompt)
             labels.append(tag_id)
@@ -161,11 +161,11 @@ def _tokenize_seq2seq(
     prompts: list[str] = []
     labels: list[str] = []
 
-    for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"]):
+    for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"], strict=True):
         sentence = " ".join(tokens)
         tokens, tag_ids = _join_spans(tokens=tokens, tag_ids=tag_ids)
 
-        for token, tag_id in zip(tokens, tag_ids):
+        for token, tag_id in zip(tokens, tag_ids, strict=True):
             prompt = _prompt_template(sentence=sentence, token=token)
             prompts.append(prompt)
             labels.append(f"{id2label[tag_id]}{tokenizer.eos_token}")
@@ -185,11 +185,11 @@ def _tokenize_causal_lm(
     attn: list[list[int]] = []
     labels: list[list[int]] = []
 
-    for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"]):
+    for tokens, tag_ids in zip(batch["tokens"], batch["ner_tags"], strict=True):
         sentence = " ".join(tokens)
         tokens, tag_ids = _join_spans(tokens=tokens, tag_ids=tag_ids)
 
-        for token, tag_id in zip(tokens, tag_ids):
+        for token, tag_id in zip(tokens, tag_ids, strict=True):
             prompt = _prompt_template(sentence=sentence, token=token)
             answer = f"{id2label[tag_id]}{tokenizer.eos_token}"
 
@@ -216,8 +216,8 @@ def _join_spans(
 ) -> tuple[list[MultinerdTag], list[int]]:
     out_ids = []
     out_tokens = []
-    for token, id in zip(tokens, tag_ids):
-        tag = _id2label_full[id]
+    for token, tag_id in zip(tokens, tag_ids, strict=True):
+        tag = _id2label_full[tag_id]
 
         if tag.startswith("B-"):
             tag = cast(MultinerdTag, tag[2:])
@@ -277,7 +277,7 @@ def init_multinerd(
     data = data.map(
         tokenize_fn,
         batched=True,
-        fn_kwargs=dict(tokenizer=tokenizer),
+        fn_kwargs={"tokenizer": tokenizer},
         num_proc=workers,
         remove_columns=next(iter(data.values())).column_names,
     )
@@ -294,7 +294,7 @@ def init_multinerd(
         data = data.map(
             prepend_system_tokens,
             batched=True,
-            fn_kwargs=dict(sys=sys),
+            fn_kwargs={"sys": sys},
             num_proc=workers,
         )
 

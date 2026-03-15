@@ -45,7 +45,7 @@ def _tokenize_seq_cls(
     prompts: list[str] = []
     labels: list[int] = []
 
-    it = zip(batch["passage"], batch["question"], batch["label"])
+    it = zip(batch["passage"], batch["question"], batch["label"], strict=True)
     for passage, question, label in it:
         prompt = _prompt_template(passage=passage, question=question)
         prompts.append(prompt)
@@ -64,7 +64,7 @@ def _tokenize_seq2seq(
     prompts: list[str] = []
     labels: list[str] = []
 
-    it = zip(batch["passage"], batch["question"], batch["label"])
+    it = zip(batch["passage"], batch["question"], batch["label"], strict=True)
     for passage, question, label in it:
         prompt = _prompt_template(passage=passage, question=question)
         prompts.append(prompt)
@@ -86,7 +86,7 @@ def _tokenize_causal_lm(
     attn: list[list[int]] = []
     labels: list[list[int]] = []
 
-    it = zip(batch["passage"], batch["question"], batch["label"])
+    it = zip(batch["passage"], batch["question"], batch["label"], strict=True)
     for passage, question, label in it:
         prompt = _prompt_template(passage=passage, question=question)
         label_str = "true" if label == 1 else "false"
@@ -139,7 +139,7 @@ def init_superglue(
     data = data.map(
         tokenize_fn,
         batched=True,
-        fn_kwargs=dict(tokenizer=tokenizer),
+        fn_kwargs={"tokenizer": tokenizer},
         num_proc=workers,
         remove_columns=next(iter(data.values())).column_names,
     )
@@ -156,7 +156,7 @@ def init_superglue(
         data = data.map(
             prepend_system_tokens,
             batched=True,
-            fn_kwargs=dict(sys=sys),
+            fn_kwargs={"sys": sys},
             num_proc=workers,
         )
 

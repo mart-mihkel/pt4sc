@@ -82,11 +82,11 @@ def _tokenize_seq_cls(
     prompts: list[str] = []
     labels: list[int] = []
 
-    for tokens, tags in zip(batch["tokens"], batch["ner_tags"]):
+    for tokens, tags in zip(batch["tokens"], batch["ner_tags"], strict=True):
         sentence = " ".join(tokens)
         tokens, tags = _join_spans(tokens=tokens, tags=tags)
 
-        for token, tag in zip(tokens, tags):
+        for token, tag in zip(tokens, tags, strict=True):
             prompt = _prompt_template(sentence=sentence, token=token)
             prompts.append(prompt)
             labels.append(label2id[tag])
@@ -104,11 +104,11 @@ def _tokenize_seq2seq(
     prompts: list[str] = []
     labels: list[str] = []
 
-    for tokens, tags in zip(batch["tokens"], batch["ner_tags"]):
+    for tokens, tags in zip(batch["tokens"], batch["ner_tags"], strict=True):
         sentence = " ".join(tokens)
         tokens, tags = _join_spans(tokens=tokens, tags=tags)
 
-        for token, tag in zip(tokens, tags):
+        for token, tag in zip(tokens, tags, strict=True):
             prompt = _prompt_template(sentence=sentence, token=token)
             prompts.append(prompt)
             labels.append(f"{tag}{tokenizer.eos_token}")
@@ -128,11 +128,11 @@ def _tokenize_causal_lm(
     attn: list[list[int]] = []
     labels: list[list[int]] = []
 
-    for tokens, tags in zip(batch["tokens"], batch["ner_tags"]):
+    for tokens, tags in zip(batch["tokens"], batch["ner_tags"], strict=True):
         sentence = " ".join(tokens)
         tokens, tags = _join_spans(tokens=tokens, tags=tags)
 
-        for token, tag in zip(tokens, tags):
+        for token, tag in zip(tokens, tags, strict=True):
             prompt = _prompt_template(sentence=sentence, token=token)
             answer = f"{tag}{tokenizer.eos_token}"
 
@@ -159,7 +159,7 @@ def _join_spans(
 ) -> tuple[list[str], list[EstnerTag]]:
     out_tags = []
     out_tokens = []
-    for token, tag in zip(tokens, tags):
+    for token, tag in zip(tokens, tags, strict=True):
         if tag.startswith("B-"):
             tag = cast(EstnerTag, tag[2:])
             out_tags.append(tag)
@@ -200,7 +200,7 @@ def init_estner(
     data = data.map(
         tokenize_fn,
         batched=True,
-        fn_kwargs=dict(tokenizer=tokenizer),
+        fn_kwargs={"tokenizer": tokenizer},
         num_proc=workers,
         remove_columns=next(iter(data.values())).column_names,
     )
@@ -217,7 +217,7 @@ def init_estner(
         data = data.map(
             prepend_system_tokens,
             batched=True,
-            fn_kwargs=dict(sys=sys),
+            fn_kwargs={"sys": sys},
             num_proc=workers,
         )
 

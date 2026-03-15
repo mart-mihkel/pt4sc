@@ -34,7 +34,7 @@ def _compute_bleu(
     references = tokenizer.batch_decode(labels, skip_special_tokens=True)
     res = _bleu.compute(predictions=predictions, references=references)  # type: ignore
     if res is None:
-        logger.warning("BLEU evaluation was no run on the main process")
+        logger.warning("BLEU evaluation was run in a child process")
         return {}
 
     return {"bleu": res["bleu"]}
@@ -49,7 +49,7 @@ def _compute_rouge(
     references = tokenizer.batch_decode(labels, skip_special_tokens=True)
     res = _rouge.compute(predictions=predictions, references=references)  # type: ignore
     if res is None:
-        logger.warning("ROUGE evaluation was no run on the main process")
+        logger.warning("ROUGE evaluation was run in a child process")
         return {}
 
     return res

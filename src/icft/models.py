@@ -28,8 +28,8 @@ class PTModelConfig(PretrainedConfig):
         num_virtual_tokens: int = 0,
         pretrained_model: str | None = None,
         num_labels: int = 1,
-        id2label: dict[int, str] = {0: "LABEL_0"},
-        label2id: dict[str, int] = {"LABEL_0": 0},
+        id2label: dict[int, str] | None = None,
+        label2id: dict[str, int] | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -37,8 +37,8 @@ class PTModelConfig(PretrainedConfig):
         self.num_virtual_tokens = num_virtual_tokens
         self.pretrained_model = pretrained_model
         self.num_labels = num_labels
-        self.id2label = id2label
-        self.label2id = label2id
+        self.id2label = id2label if id2label is not None else {0: "LABEL_0"}
+        self.label2id = label2id if label2id is not None else {"LABEL_0": 0}
 
 
 class PTModel(PreTrainedModel):
@@ -247,7 +247,6 @@ class PTEncoderDecoderModel(PTModel):
             )
 
             return self._post_forward_seq_cls(
-                input_ids=input_ids,
                 labels=labels,
                 last_hidden_state=out.last_hidden_state,
             )
@@ -285,7 +284,6 @@ class PTEncoderDecoderModel(PTModel):
 
     def _post_forward_seq_cls(
         self,
-        input_ids: Tensor,
         labels: Tensor,
         last_hidden_state: Tensor,
     ) -> SequenceClassifierOutput:
