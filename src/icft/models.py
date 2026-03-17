@@ -16,6 +16,7 @@ from transformers.modeling_outputs import (
     SequenceClassifierOutput,
 )
 
+from icft.logging import logger
 from icft.types import Task
 
 
@@ -94,6 +95,12 @@ class PTModel(PreTrainedModel):
         num_virtual = self.config.num_virtual_tokens
         batch_size = input_ids.shape[0]
         device = input_ids.device
+
+        max_input_len = self.base.config.max_position_embeddings - num_virtual
+        if input_ids.shape[1] > max_input_len:
+            logger.warning("prefixed input sequence length exceeds model maximum")
+            input_ids = input_ids[:, :max_input_len]
+            attention_mask = attention_mask[:, :max_input_len]
 
         prompt_emb = self.base.get_input_embeddings()(input_ids)
         prefix_emb = self.prefix.expand(batch_size, -1, -1)
