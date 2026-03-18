@@ -47,6 +47,15 @@ from icft.models import (
 from icft.types import DatasetName, PrefixInit, PromptMode, Task
 
 
+def save_params(params: dict[str, Any], run_name: str):
+    import json
+    import os
+
+    os.makedirs(f"out/{run_name}", exist_ok=True)
+    with open(f"out/{run_name}/cli_params.json", "w") as f:
+        json.dump(params, f, indent=2)
+
+
 def init_tokenizer(model_path: str) -> PreTrainedTokenizerFast:
     logger.debug("init tokenizer")
     tokenizer = AutoTokenizer.from_pretrained(model_path)

@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from typer import Context, Option, Typer
 
@@ -29,15 +29,6 @@ def timed(func: Callable) -> Callable:
     return wrapper
 
 
-def save_params(params: dict[str, Any], run_name: str):
-    import json
-    import os
-
-    os.makedirs(f"out/{run_name}", exist_ok=True)
-    with open(f"out/{run_name}/cli_params.json", "w") as f:
-        json.dump(params, f, indent=2)
-
-
 @app.callback()
 def callback(log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"):
     from icft.logging import logger
@@ -63,6 +54,7 @@ def fine_tune(
     grad_chkpts: bool = False,
     mlflow_tracking_uri: str | None = None,
 ):
+    from icft.scripts.common import save_params
     from icft.scripts.fine_tune import fine_tune
 
     save_params(ctx.params, run_name)
@@ -100,6 +92,7 @@ def prompt_tune(
     grad_chkpts: bool = False,
     mlflow_tracking_uri: str | None = None,
 ):
+    from icft.scripts.common import save_params
     from icft.scripts.prompt_tune import prompt_tune
 
     save_params(ctx.params, run_name)

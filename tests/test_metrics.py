@@ -1,7 +1,7 @@
 import numpy as np
 from transformers import EvalPrediction, PreTrainedTokenizerFast
 
-from icft.common import init_metrics_fn
+from icft.scripts.common import init_metrics_fn
 
 
 def test_seq_cls():

@@ -1,4 +1,5 @@
-from icft.common import (
+from icft.logging import logger
+from icft.scripts.common import (
     init_collate_fn,
     init_data,
     init_metrics_fn,
@@ -6,7 +7,6 @@ from icft.common import (
     init_tokenizer,
     train,
 )
-from icft.logging import logger
 from icft.types import DatasetName, PrefixInit, Task
 
 

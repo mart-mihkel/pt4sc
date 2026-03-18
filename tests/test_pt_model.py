@@ -1,6 +1,5 @@
 from transformers import PreTrainedTokenizerFast
 
-from icft.common import init_collate_fn
 from icft.datasets.multinerd import DatasetInfo
 from icft.models import (
     PTDecoderModel,
@@ -10,6 +9,7 @@ from icft.models import (
     PTEncoderModel,
     PTEncoderModelConfig,
 )
+from icft.scripts.common import init_collate_fn
 from icft.scripts.prompt_tune import init_pt_model
 
 

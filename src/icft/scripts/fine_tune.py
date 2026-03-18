@@ -1,4 +1,5 @@
-from icft.common import (
+from icft.logging import logger
+from icft.scripts.common import (
     DatasetName,
     PromptMode,
     Task,
@@ -9,7 +10,6 @@ from icft.common import (
     init_tokenizer,
     train,
 )
-from icft.logging import logger
 
 
 def fine_tune(

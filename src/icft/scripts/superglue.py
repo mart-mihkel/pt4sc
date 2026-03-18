@@ -8,9 +8,9 @@ from datasets.splits import Split
 from torch.utils.data import Dataset
 from transformers import AutoModel, Trainer
 
-from icft.common import init_collate_fn, init_data, init_tokenizer
 from icft.datasets.superglue import id2label
 from icft.logging import logger
+from icft.scripts.common import init_collate_fn, init_data, init_tokenizer
 
 
 def predict(checkpoint: str):
