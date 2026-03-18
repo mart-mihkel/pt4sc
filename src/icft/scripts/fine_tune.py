@@ -22,6 +22,7 @@ def fine_tune(
     workers: int,
     epochs: int,
     batch_size: int,
+    effective_batch_size: int,
     learning_rate: float,
     grad_chkpts: bool,
     mlflow_tracking_uri: str | None,
@@ -66,6 +67,7 @@ def fine_tune(
         epochs=epochs,
         learning_rate=learning_rate,
         batch_size=batch_size,
+        effective_batch_size=effective_batch_size,
         grad_chkpts=grad_chkpts,
         mlflow_tracking_uri=mlflow_tracking_uri,
     )

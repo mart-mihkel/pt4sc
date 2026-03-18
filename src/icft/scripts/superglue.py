@@ -19,7 +19,6 @@ def predict(checkpoint: str):
         params = json.load(f)
 
     tokenizer = init_tokenizer(model_path=checkpoint)
-
     data, _ = init_data(
         tokenizer=tokenizer,
         task=params["task"],
@@ -31,14 +30,17 @@ def predict(checkpoint: str):
 
     test = cast(Dataset, data["test"].remove_columns("labels"))
 
+    logger.debug("load model from checkpoint")
     model = AutoModel.from_pretrained(checkpoint)
 
+    logger.debug("load trainer from checkpoint")
     args = torch.load(path / "training_args.bin", weights_only=False)
     args.eval_strategy = "no"
 
     collate_fn = init_collate_fn(tokenizer=tokenizer, task=params["task"])
     trainer = Trainer(args=args, model=model, data_collator=collate_fn)
 
+    logger.debug("run predictions")
     res = trainer.predict(test)
     preds = np.argmax(res.predictions, axis=-1)
 

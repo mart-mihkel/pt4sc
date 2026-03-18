@@ -48,10 +48,12 @@ from icft.types import DatasetName, PrefixInit, PromptMode, Task
 
 
 def init_tokenizer(model_path: str) -> PreTrainedTokenizerFast:
+    logger.debug("init tokenizer")
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     tokenizer = cast(PreTrainedTokenizerFast, tokenizer)
 
     if tokenizer.pad_token is None:
+        logger.warning("tokenizer doesn't have a padding token, using eos")
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
@@ -85,6 +87,7 @@ def init_model(
         raise NotImplementedError(f"Task '{task}'")
 
     if model.config.pad_token_id is None:
+        logger.warning("model doesn't have a padding token, using eos")
         model.config.pad_token_id = tokenizer.eos_token_id
 
     if head_only:
@@ -117,7 +120,9 @@ def init_pt_model(
     sys = tokenizer(
         f"{cls_token}{data_info['system_prompt']}",
         add_special_tokens=False,
+        truncation=True,
     )
+
     system_ids = torch.tensor(sys["input_ids"])
     num_virtual_tokens = len(system_ids)
 
@@ -300,23 +305,26 @@ def train(
     epochs: int,
     learning_rate: float,
     batch_size: int,
+    effective_batch_size: int,
     grad_chkpts: bool,
     mlflow_tracking_uri: str | None,
 ):
     have_cuda = torch.cuda.is_available()
     optim = "adamw_8bit" if have_cuda else "adamw_torch_fused"
-    grad_acc_steps = max(1, ceil(32 / batch_size))
-    effective_batch_size = batch_size * grad_acc_steps
-    train_steps = ceil(len(data["train"]) / effective_batch_size) * epochs
+    grad_acc_steps = max(1, ceil(effective_batch_size / batch_size))
+    actual_effective_batch_size = batch_size * grad_acc_steps
+    train_steps = ceil(len(data["train"]) / actual_effective_batch_size) * epochs
     eval_steps = max(1, train_steps // 5)
     logging_steps = max(1, train_steps // 100)
     out_dir = f"out/{run_name}"
 
     logger.debug("%shave cuda", "" if have_cuda else "don't ")
-
-    logger.debug("batch size %d", batch_size)
-    logger.debug("effective batch size %d", effective_batch_size)
-    logger.debug("%d gradient accumulation steps", grad_acc_steps)
+    logger.debug(
+        "batch size %d, effective batch size %d with %d gradient accumulation steps",
+        batch_size,
+        actual_effective_batch_size,
+        grad_acc_steps,
+    )
 
     logger.debug("%d train samples", len(data["train"]))
     logger.debug("%d dev samples", len(data["dev"]))
@@ -324,9 +332,6 @@ def train(
         logger.debug("%d test samples", len(data["test"]))
     else:
         logger.debug("0 test samples")
-
-    logger.debug("%d train steps", train_steps)
-    logger.debug("%d eval steps", eval_steps)
 
     args = TrainingArguments(
         run_name=run_name,
@@ -359,7 +364,12 @@ def train(
     )
 
     if mlflow_tracking_uri is not None:
-        logger.debug("tracking experiment 'icft' at '%s'", mlflow_tracking_uri)
+        logger.info(
+            "tracking experiment 'icft' run '%s' at %s",
+            run_name,
+            mlflow_tracking_uri,
+        )
+
         set_tracking_uri(mlflow_tracking_uri)
         set_experiment("icft")
         start_run(run_name=run_name)
@@ -370,11 +380,13 @@ def train(
     trainer.train()
 
     if "test" in data:
+        logger.debug("run test evalatuaion")
         test = cast(Dataset, data["test"])
         trainer.evaluate(test, metric_key_prefix="test")
     else:
         logger.warning("skip test evalatuaion, no data")
 
+    logger.debug("save checkpoint to %s", out_dir)
     trainer.save_model(out_dir)
 
     if mlflow_tracking_uri is not None:
