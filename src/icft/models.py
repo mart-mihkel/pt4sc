@@ -73,6 +73,11 @@ class PTModel(PreTrainedModel):
         self.base = base
         self.prefix = Parameter(prefix)
 
+        if _config.model_type == "t5":
+            self.max_pos = _config.n_positions
+        else:
+            self.max_pos = _config.max_position_embeddings
+
         self.post_init()
 
     def gradient_checkpointing_enable(self, **kwargs):
@@ -96,7 +101,7 @@ class PTModel(PreTrainedModel):
         batch_size = input_ids.shape[0]
         device = input_ids.device
 
-        max_input_len = self.base.config.max_position_embeddings - num_virtual
+        max_input_len = self.max_pos - num_virtual
         if input_ids.shape[1] > max_input_len:
             logger.warning("prefixed input sequence length exceeds model maximum")
             input_ids = input_ids[:, :max_input_len]
