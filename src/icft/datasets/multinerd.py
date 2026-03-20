@@ -269,6 +269,17 @@ def init_multinerd(
     train_subset: float = 0.1,
     split: Split | None = None,
 ) -> tuple[DatasetDict, DatasetInfo]:
+    """
+    Initialize a modified subset of the MultiNERD dataset.
+
+    The BIO tagging task is converted to a regular NER tagging task by joining
+    tokens with B- and I- prefixes into a single span. O tags are dropped
+    entirely.
+
+    Each token is split into a separate sample containing the entire context
+    sentence and the target token. The task is to classify the tag of the token
+    in the entire sequence.
+    """
     data = load_dataset(
         "Babelscape/multinerd",
         split=split,

@@ -201,6 +201,16 @@ def init_estner(
     workers: int,
     split: Split | None = None,
 ) -> tuple[DatasetDict, DatasetInfo]:
+    """
+    Initialize a modified version of the EstNER dataset.
+
+    The BIO tagging task is converted to a regular NER tagging task by joining
+    tokens with B- and I- prefixes into a single span.
+
+    Each token is split into a separate sample containing the entire context
+    sentence and the target token. The task is to classify the tag of the token
+    in the entire sequence.
+    """
     data = cast(DatasetDict, load_dataset("tartuNLP/EstNER", split=split))
 
     data = data.map(
