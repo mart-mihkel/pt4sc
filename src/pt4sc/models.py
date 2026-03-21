@@ -8,11 +8,7 @@ from transformers import (
     PretrainedConfig,
     PreTrainedModel,
 )
-from transformers.modeling_outputs import (
-    CausalLMOutput,
-    Seq2SeqModelOutput,
-    SequenceClassifierOutput,
-)
+from transformers.modeling_outputs import SequenceClassifierOutput
 
 from pt4sc.logging import logger
 
@@ -143,7 +139,7 @@ class PTEncoderModel(PTModel):
         input_ids: Tensor,
         attention_mask: Tensor,
         labels: Tensor | None = None,
-    ) -> SequenceClassifierOutput | Seq2SeqModelOutput | CausalLMOutput:
+    ) -> SequenceClassifierOutput:
         inputs, attn = self._get_prompt(input_ids, attention_mask)
         return self.base(inputs_embeds=inputs, attention_mask=attn, labels=labels)
 
@@ -160,7 +156,7 @@ class PTDecoderModel(PTModel):
         input_ids: Tensor,
         attention_mask: Tensor,
         labels: Tensor | None = None,
-    ) -> SequenceClassifierOutput | Seq2SeqModelOutput | CausalLMOutput:
+    ) -> SequenceClassifierOutput:
         inputs, attn = self._get_prompt(input_ids, attention_mask)
         out = self.base(
             inputs_embeds=inputs,
@@ -219,7 +215,7 @@ class PTEncoderDecoderModel(PTModel):
         input_ids: Tensor,
         attention_mask: Tensor,
         labels: Tensor | None = None,
-    ) -> SequenceClassifierOutput | Seq2SeqModelOutput | CausalLMOutput:
+    ) -> SequenceClassifierOutput:
         enc_inputs, enc_attn = self._get_prompt(input_ids, attention_mask)
 
         dec_input_ids = self._shift_inputs(input_ids)
