@@ -264,7 +264,7 @@ def _filter_english(batch: MultinerdBatch) -> list[bool]:
 def init_multinerd(
     tokenizer: PreTrainedTokenizerFast,
     model_type: str,
-    workers: int,
+    workers: int = 0,
     filter_en: bool = True,
     train_subset: float = 0.1,
     split: Split | None = None,

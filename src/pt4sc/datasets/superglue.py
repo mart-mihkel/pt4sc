@@ -138,7 +138,7 @@ def _tokenize(
 def init_superglue(
     tokenizer: PreTrainedTokenizerFast,
     model_type: str,
-    workers: int,
+    workers: int = 0,
     split: Split | None = None,
 ) -> tuple[DatasetDict, DatasetInfo]:
     data = cast(DatasetDict, load_dataset("aps/super_glue", "boolq", split=split))

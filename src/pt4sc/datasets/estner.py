@@ -198,7 +198,7 @@ def _join_spans(
 def init_estner(
     tokenizer: PreTrainedTokenizerFast,
     model_type: str,
-    workers: int,
+    workers: int = 0,
     split: Split | None = None,
 ) -> tuple[DatasetDict, DatasetInfo]:
     """
@@ -213,19 +213,13 @@ def init_estner(
     """
     data = cast(DatasetDict, load_dataset("tartuNLP/EstNER", split=split))
 
+    cols = ["doc_id", "sent_id", "tokens", "ner_tags", "ner_tags_2", "ner_tags_3"]
     data = data.map(
         _tokenize,
         batched=True,
         num_proc=workers,
+        remove_columns=cols,
         fn_kwargs={"tokenizer": tokenizer, "model_type": model_type},
-        remove_columns=[
-            "doc_id",
-            "sent_id",
-            "tokens",
-            "ner_tags",
-            "ner_tags_2",
-            "ner_tags_3",
-        ],
     )
 
     prompt = _get_sys_prompt(tokenizer=tokenizer, model_type=model_type)
