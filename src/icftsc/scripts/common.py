@@ -1,4 +1,5 @@
 import json
+import os
 from collections.abc import Callable
 from math import ceil
 from typing import Any, cast
@@ -31,6 +32,11 @@ from icftsc.datasets.estner import init_estner
 from icftsc.datasets.multinerd import DatasetInfo, init_multinerd
 from icftsc.datasets.superglue import init_superglue
 from icftsc.logging import logger
+from icftsc.metrics import (
+    compute_metrics_causal_lm,
+    compute_metrics_seq2seq,
+    compute_metrics_seq_cls,
+)
 from icftsc.modeling.causal import PTGPTForCausalLM
 from icftsc.modeling.common import PTModel, PTModelConfig
 from icftsc.modeling.seq2seq import PTT5ForSeq2SeqLM
@@ -43,12 +49,25 @@ from icftsc.types import DatasetName, PrefixInit, Task
 
 
 def save_params(params: dict[str, Any], run_name: str):
-    import json
-    import os
-
     os.makedirs(f"out/{run_name}", exist_ok=True)
     with open(f"out/{run_name}/cli_params.json", "w") as f:
         json.dump(params, f, indent=2)
+
+
+def init_metrics_fn(
+    task: Task,
+    tokenizer: PreTrainedTokenizerFast,
+) -> Callable[[EvalPrediction], dict[str, int | float]]:
+    if task == "seqcls":
+        return compute_metrics_seq_cls
+
+    if task == "seq2seq":
+        return lambda eval_pred: compute_metrics_seq2seq(eval_pred, tokenizer)
+
+    if task == "causal":
+        return lambda eval_pred: compute_metrics_causal_lm(eval_pred, tokenizer)
+
+    raise NotImplementedError(f"Task '{task}'")
 
 
 def init_tokenizer(model_path: str) -> PreTrainedTokenizerFast:
@@ -290,6 +309,7 @@ def train(
 ):
     have_cuda = torch.cuda.is_available()
     optim = "adamw_8bit" if have_cuda else "adamw_torch_fused"
+    eval_acc_steps = 8
     grad_acc_steps = max(1, ceil(effective_batch_size / batch_size))
     actual_effective_batch_size = batch_size * grad_acc_steps
     train_steps = ceil(len(data["train"]) / actual_effective_batch_size) * epochs
@@ -298,12 +318,14 @@ def train(
     out_dir = f"out/{run_name}"
 
     logger.debug("%shave cuda", "" if have_cuda else "don't ")
+    logger.debug("batch size %d", batch_size)
     logger.debug(
-        "batch size %d, effective batch size %d with %d gradient accumulation steps",
-        batch_size,
+        "effective batch size %d with %d gradient accumulation steps",
         actual_effective_batch_size,
         grad_acc_steps,
     )
+
+    logger.debug("%d eval accumulation steps", eval_acc_steps)
 
     args = TrainingArguments(
         run_name=run_name,
@@ -312,6 +334,7 @@ def train(
         save_strategy="no",
         eval_strategy="steps",
         eval_steps=eval_steps,
+        eval_accumulation_steps=8,
         logging_steps=logging_steps,
         learning_rate=learning_rate,
         optim=optim,

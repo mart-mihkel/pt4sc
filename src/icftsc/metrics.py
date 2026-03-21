@@ -59,7 +59,14 @@ def _compute_rouge(
 
 
 def compute_metrics_seq_cls(eval_pred: EvalPrediction) -> dict[str, float]:
-    logits, labels = eval_pred
+    logits = eval_pred.predictions
+    if isinstance(logits, tuple):
+        logits = logits[0]
+
+    labels = eval_pred.label_ids
+    if isinstance(labels, tuple):
+        labels = labels[0]
+
     preds = np.argmax(logits, axis=-1)
     return _compute_classification_metrics(labels, preds)
 
@@ -68,7 +75,14 @@ def compute_metrics_seq2seq(
     eval_pred: EvalPrediction,
     tokenizer: PreTrainedTokenizerFast,
 ) -> dict[str, float]:
-    logits, labels = eval_pred
+    logits = eval_pred.predictions
+    if isinstance(logits, tuple):
+        logits = logits[0]
+
+    labels = eval_pred.label_ids
+    if isinstance(labels, tuple):
+        labels = labels[0]
+
     preds = np.argmax(logits, axis=-1)
     mask = labels != -100
 
@@ -83,7 +97,14 @@ def compute_metrics_causal_lm(
     eval_pred: EvalPrediction,
     tokenizer: PreTrainedTokenizerFast,
 ) -> dict[str, float]:
-    logits, labels = eval_pred
+    logits = eval_pred.predictions
+    if isinstance(logits, tuple):
+        logits = logits[0]
+
+    labels = eval_pred.label_ids
+    if isinstance(labels, tuple):
+        labels = labels[0]
+
     preds = np.argmax(logits, axis=-1)
     mask = labels != -100
 

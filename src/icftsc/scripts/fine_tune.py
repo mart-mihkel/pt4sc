@@ -1,10 +1,10 @@
 from transformers import AutoConfig
 
 from icftsc.logging import logger
-from icftsc.metrics import compute_metrics_seq_cls
 from icftsc.scripts.common import (
     init_collator,
     init_data,
+    init_metrics_fn,
     init_model,
     init_tokenizer,
     train,
@@ -32,6 +32,7 @@ def fine_tune(
     logger.info("load pretrained tokenizer")
     tokenizer = init_tokenizer(model_path=model_path)
     collate_fn = init_collator(tokenizer=tokenizer, task=task)
+    metrics_fn = init_metrics_fn(task=task, tokenizer=tokenizer)
 
     logger.info("load dataset '%s'", dataset)
     data, info = init_data(
@@ -67,7 +68,7 @@ def fine_tune(
         model=model,
         data=data,
         collate_fn=collate_fn,
-        metrics_fn=compute_metrics_seq_cls,
+        metrics_fn=metrics_fn,
         run_name=run_name,
         epochs=epochs,
         learning_rate=learning_rate,
