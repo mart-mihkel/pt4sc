@@ -17,6 +17,8 @@ from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     DataCollator,
+    DataCollatorForSeq2Seq,
+    DataCollatorWithPadding,
     EvalPrediction,
     PreTrainedModel,
     PreTrainedTokenizerFast,
@@ -50,7 +52,6 @@ def save_params(params: dict[str, Any], run_name: str):
 
 
 def init_tokenizer(model_path: str) -> PreTrainedTokenizerFast:
-    logger.debug("init tokenizer")
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     tokenizer = cast(PreTrainedTokenizerFast, tokenizer)
 
@@ -62,6 +63,16 @@ def init_tokenizer(model_path: str) -> PreTrainedTokenizerFast:
     return tokenizer
 
 
+def init_collator(tokenizer: PreTrainedTokenizerFast, task: Task) -> DataCollator:
+    if task == "seqcls":
+        return DataCollatorWithPadding(tokenizer=tokenizer, pad_to_multiple_of=8)
+
+    if task == "causal" or task == "seq2seq":
+        return DataCollatorForSeq2Seq(tokenizer=tokenizer, pad_to_multiple_of=8)
+
+    raise NotImplementedError(f"Task '{task}'")
+
+
 def init_model(
     head_only: bool,
     tokenizer: PreTrainedTokenizerFast,
@@ -70,6 +81,7 @@ def init_model(
     task: Task,
 ) -> tuple[PreTrainedModel, dict[str, set[str]]]:
     if task == "seqcls":
+        logger.debug("load pretrained model for sequence classification")
         model, loading_info = AutoModelForSequenceClassification.from_pretrained(
             model_path,
             output_loading_info=True,
@@ -78,9 +90,11 @@ def init_model(
             label2id=data_info["label2id"],
         )
     elif task == "causal":
+        logger.debug("load pretrained model for causal language modeling")
         loading_info = {"missing_keys": set()}
         model = AutoModelForCausalLM.from_pretrained(model_path)
     elif task == "seq2seq":
+        logger.debug("load pretrained model for sequence to sequence")
         loading_info = {"missing_keys": set()}
         model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
     else:
@@ -97,8 +111,9 @@ def init_model(
 
 
 def load_pt_model(checkpoint: str) -> PTModel:
-    logger.debug("load pt model from checkpoint")
+    logger.debug("load pt-model from checkpoint")
     config = AutoConfig.from_pretrained(checkpoint, local_files_only=True)
+    # FIXME: there's no automodel support
     return AutoModel.from_pretrained(
         checkpoint,
         config=config,
@@ -108,12 +123,15 @@ def load_pt_model(checkpoint: str) -> PTModel:
 
 def init_seqcls_pt_model(config: PTModelConfig, model_type: str) -> PTModel:
     if model_type in bert_model_types:
+        logger.debug("init pt-bert for sequence classification")
         return PTBertForSequenceClassification(config=config)
 
     if model_type in gpt_model_types:
+        logger.debug("init pt-gpt for sequence classification")
         return PTGPTForSequenceClassification(config=config)
 
     if model_type in t5_model_types:
+        logger.debug("init pt-t5 for sequence classification")
         return PTT5ForSequenceClassification(config=config)
 
     raise NotImplementedError(
@@ -123,6 +141,7 @@ def init_seqcls_pt_model(config: PTModelConfig, model_type: str) -> PTModel:
 
 def init_causal_pt_model(config: PTModelConfig, model_type: str) -> PTModel:
     if model_type in gpt_model_types:
+        logger.debug("init pt-gpt for causal language modeling")
         return PTGPTForCausalLM(config=config)
 
     raise NotImplementedError(f"PTModelForCausalLM for '{model_type}' base model")
@@ -130,6 +149,7 @@ def init_causal_pt_model(config: PTModelConfig, model_type: str) -> PTModel:
 
 def init_seq2seq_pt_model(config: PTModelConfig, model_type: str) -> PTModel:
     if model_type in t5_model_types:
+        logger.debug("init pt-t5 for sequence to sequence language modeling")
         return PTT5ForSeq2SeqLM(config=config)
 
     raise NotImplementedError(f"PTModelForSeq2SeqLM for '{model_type}' base model")
@@ -164,6 +184,7 @@ def init_pt_model(
     )
 
     config = PTModelConfig(
+        task=task,
         pretrained_model=model_path,
         num_virtual_tokens=num_virtual_tokens,
         num_labels=len(data_info["id2label"]),
@@ -242,10 +263,13 @@ def init_data(
 
 
 def freeze(model: Module, skip: set[str]):
-    logger.info("freeze base model, skip layers: %s", skip)
+    logger.info("freeze base model")
     for name, param in model.named_parameters():
-        if name not in skip:
-            param.requires_grad = False
+        if name in skip:
+            logger.info("skip '%s'", name)
+            continue
+
+        param.requires_grad = False
 
 
 def train(
@@ -278,11 +302,6 @@ def train(
         grad_acc_steps,
     )
 
-    logger.debug("%d train samples", len(data["train"]))
-    logger.debug("%d dev samples", len(data["dev"]))
-    if "test" in data:
-        logger.debug("%d test samples", len(data["test"]))
-
     args = TrainingArguments(
         run_name=run_name,
         report_to="mlflow" if mlflow_tracking_uri else "none",
@@ -295,7 +314,7 @@ def train(
         optim=optim,
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size * 4,
+        per_device_eval_batch_size=batch_size * 2,
         gradient_accumulation_steps=grad_acc_steps,
         gradient_checkpointing=grad_chkpts,
         bf16_full_eval=have_cuda,

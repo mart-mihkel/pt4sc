@@ -3,6 +3,8 @@ from torch import Tensor
 from torch.nn import Parameter
 from transformers import (
     AutoConfig,
+    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
     AutoModelForSequenceClassification,
     PretrainedConfig,
     PreTrainedModel,
@@ -10,6 +12,7 @@ from transformers import (
 from transformers.utils.generic import ModelOutput
 
 from icftsc.logging import logger
+from icftsc.types import Task
 
 
 class PTModelConfig(PretrainedConfig):
@@ -19,6 +22,7 @@ class PTModelConfig(PretrainedConfig):
         self,
         num_virtual_tokens: int = 0,
         pretrained_model: str | None = None,
+        task: Task | None = None,
         num_labels: int = 1,
         id2label: dict[int, str] | None = None,
         label2id: dict[str, int] | None = None,
@@ -27,6 +31,7 @@ class PTModelConfig(PretrainedConfig):
         super().__init__(**kwargs)
         self.num_virtual_tokens = num_virtual_tokens
         self.pretrained_model = pretrained_model
+        self.task = task
         self.num_labels = num_labels
         self.id2label = id2label if id2label is not None else {0: "LABEL_0"}
         self.label2id = label2id if label2id is not None else {"LABEL_0": 0}
@@ -38,26 +43,37 @@ class PTModel(PreTrainedModel):
     def __init__(self, config: PTModelConfig) -> None:
         super().__init__(config)
 
-        self.config = config
-        _config = AutoConfig.from_pretrained(
+        base_config = AutoConfig.from_pretrained(
             config.pretrained_model,
             num_labels=config.num_labels,
             id2label=config.id2label,
             label2id=config.label2id,
         )
 
-        base = AutoModelForSequenceClassification.from_config(_config)
+        if config.task == "seqcls":
+            logger.debug("init empty pretrained model for sequence classification")
+            base = AutoModelForSequenceClassification.from_config(base_config)
+        elif config.task == "causal":
+            logger.debug("init empty pretrained model for causal language modeling")
+            base = AutoModelForCausalLM.from_config(base_config)
+        elif config.task == "seq2seq":
+            logger.debug("init empty pretrained model for sequence to sequence")
+            base = AutoModelForSeq2SeqLM.from_config(base_config)
+        else:
+            raise NotImplementedError(f"Task '{config.task}'")
+
         emb_dim = base.get_input_embeddings().embedding_dim
         prefix = torch.randn(config.num_virtual_tokens, emb_dim)
 
-        if "n_positions" in _config:
-            self.max_pos = _config.n_positions
-        elif "max_position_embeddings" in _config:
-            self.max_pos = _config.max_position_embeddings
+        if "n_positions" in base_config:
+            self.max_pos = base_config.n_positions
+        elif "max_position_embeddings" in base_config:
+            self.max_pos = base_config.max_position_embeddings
         else:
             logger.warning("not detecting maximum input sequence length")
             self.max_pos = float("inf")
 
+        self.config = config
         self.base = base
         self.prefix = Parameter(prefix)
         self.post_init()

@@ -1,8 +1,14 @@
-from transformers import AutoConfig, DataCollatorWithPadding
+from transformers import AutoConfig
 
 from icftsc.logging import logger
 from icftsc.metrics import compute_metrics_seq_cls
-from icftsc.scripts.common import init_data, init_pt_model, init_tokenizer, train
+from icftsc.scripts.common import (
+    init_collator,
+    init_data,
+    init_pt_model,
+    init_tokenizer,
+    train,
+)
 from icftsc.types import DatasetName, PrefixInit, Task
 
 
@@ -20,11 +26,14 @@ def prompt_tune(
     grad_chkpts: bool,
     mlflow_tracking_uri: str | None,
 ):
+    logger.info("load model config")
     config = AutoConfig.from_pretrained(model_path)
-    tokenizer = init_tokenizer(model_path=model_path)
-    collate_fn = DataCollatorWithPadding(tokenizer=tokenizer, pad_to_multiple_of=8)
 
-    logger.info("init dataset '%s'", dataset)
+    logger.info("load pretrained tokenizer")
+    tokenizer = init_tokenizer(model_path=model_path)
+    collate_fn = init_collator(tokenizer=tokenizer, task=task)
+
+    logger.info("load dataset '%s'", dataset)
     data, info = init_data(
         model_type=config.model_type,
         tokenizer=tokenizer,
@@ -42,9 +51,10 @@ def prompt_tune(
         data.pop("test")
 
     logger.info(
-        "init pt model for '%s' with %s prefix initialization",
+        "init pt-model from '%s' with %s prefix initialization for '%s'",
         model_path,
         prefix_init,
+        task,
     )
 
     model = init_pt_model(
