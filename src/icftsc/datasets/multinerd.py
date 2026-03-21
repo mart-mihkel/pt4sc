@@ -284,7 +284,7 @@ def init_multinerd(
     task: Task,
     workers: int = 0,
     filter_en: bool = True,
-    train_subset: float = 0.1,
+    subset: float = 0.1,
     split: Split | None = None,
 ) -> tuple[DatasetDict, DatasetInfo]:
     """
@@ -313,14 +313,18 @@ def init_multinerd(
         logger.info("using english only subset")
         data = data.filter(_filter_english, batched=True)
 
+    logger.warning("using %d%% of data", int(subset * 100))
     if "train" in data:
-        logger.info("using %d%% of train and dev data", int(train_subset * 100))
-
-        idx_train = range(int(train_subset * len(data["train"])))
+        idx_train = range(int(subset * len(data["train"])))
         data["train"] = data["train"].select(idx_train)
 
-        idx_dev = range(int(train_subset * len(data["dev"])))
+    if "dev" in data:
+        idx_dev = range(int(subset * len(data["dev"])))
         data["dev"] = data["dev"].select(idx_dev)
+
+    if "test" in data:
+        idx_test = range(int(subset * len(data["test"])))
+        data["test"] = data["test"].select(idx_test)
 
     data = data.map(
         _tokenize,
@@ -358,12 +362,12 @@ def init_multinerd(
     )
 
     if "train" in data:
-        logger.debug("%d train samples", len(data["train"]))
+        logger.info("%d train samples", len(data["train"]))
 
     if "dev" in data:
-        logger.debug("%d dev samples", len(data["dev"]))
+        logger.info("%d dev samples", len(data["dev"]))
 
     if "test" in data:
-        logger.debug("%d test samples", len(data["test"]))
+        logger.info("%d test samples", len(data["test"]))
 
     return data, info

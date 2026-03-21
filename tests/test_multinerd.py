@@ -28,7 +28,7 @@ def test_multinerd_mmbert(mmbert_tokenizer: PreTrainedTokenizerFast):
     data, _ = init_multinerd(
         tokenizer=mmbert_tokenizer,
         model_type="modernbert",
-        train_subset=1.0,
+        subset=1.0,
         filter_en=False,
         task="seqcls",
         split=split,
@@ -44,7 +44,7 @@ def test_multinerd_gpt2(gpt2_tokenizer):
     data, _ = init_multinerd(
         tokenizer=gpt2_tokenizer,
         model_type="gpt2",
-        train_subset=1.0,
+        subset=1.0,
         filter_en=False,
         task="causal",
         split=split,
@@ -61,7 +61,7 @@ def test_multinerd_t5(t5_tokenizer):
         tokenizer=t5_tokenizer,
         model_type="t5",
         filter_en=False,
-        train_subset=1.0,
+        subset=1.0,
         task="seq2seq",
         split=split,
         workers=0,

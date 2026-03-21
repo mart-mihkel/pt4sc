@@ -200,12 +200,12 @@ def init_superglue(
     )
 
     if "train" in data:
-        logger.debug("%d train samples", len(data["train"]))
+        logger.info("%d train samples", len(data["train"]))
 
     if "dev" in data:
-        logger.debug("%d dev samples", len(data["dev"]))
+        logger.info("%d dev samples", len(data["dev"]))
 
     if "test" in data:
-        logger.debug("%d test samples", len(data["test"]))
+        logger.info("%d test samples", len(data["test"]))
 
     return data, info

@@ -309,13 +309,17 @@ def train(
 ):
     have_cuda = torch.cuda.is_available()
     optim = "adamw_8bit" if have_cuda else "adamw_torch_fused"
+
     eval_acc_steps = 8
     grad_acc_steps = max(1, ceil(effective_batch_size / batch_size))
     actual_effective_batch_size = batch_size * grad_acc_steps
+
     train_steps = ceil(len(data["train"]) / actual_effective_batch_size) * epochs
     eval_steps = max(1, train_steps // 5)
     logging_steps = max(1, train_steps // 100)
+
     out_dir = f"out/{run_name}"
+    report_to = "mlflow" if mlflow_tracking_uri else "none"
 
     logger.debug("%shave cuda", "" if have_cuda else "don't ")
     logger.debug("batch size %d", batch_size)
@@ -329,7 +333,7 @@ def train(
 
     args = TrainingArguments(
         run_name=run_name,
-        report_to="mlflow" if mlflow_tracking_uri else "none",
+        report_to=report_to,
         output_dir=out_dir,
         save_strategy="no",
         eval_strategy="steps",
@@ -345,8 +349,6 @@ def train(
         gradient_checkpointing=grad_chkpts,
         bf16_full_eval=have_cuda,
         bf16=have_cuda,
-        fp16_full_eval=not have_cuda,
-        fp16=not have_cuda,
     )
 
     trainer = Trainer(
@@ -377,21 +379,21 @@ def train(
     if "test" in data:
         test = cast(Dataset, data["test"])
         metrics = trainer.evaluate(test, metric_key_prefix="test")
-        logger.info(json.dumps(metrics, indent=2))
+        logger.info(json.dumps(metrics, indent=4))
     else:
         logger.warning("skip test evalatuaion, no data")
 
     if "test-system" in data:
         test_system = cast(Dataset, data["test-system"])
         metrics = trainer.evaluate(test_system, metric_key_prefix="test_system")
-        logger.info(json.dumps(metrics, indent=2))
+        logger.info(json.dumps(metrics, indent=4))
     else:
         logger.warning("skip system prompted test evalatuaion, no data")
 
     if "test-random" in data:
         test_random = cast(Dataset, data["test-random"])
         metrics = trainer.evaluate(test_random, metric_key_prefix="test_random")
-        logger.info(json.dumps(metrics, indent=2))
+        logger.info(json.dumps(metrics, indent=4))
     else:
         logger.warning("skip random prompt test evalatuaion, no data")
 
