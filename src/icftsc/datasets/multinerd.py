@@ -152,15 +152,15 @@ def _gpt_prompt(sentence: str, entity: str, bos: str | None) -> str:
 
 def _t5_sys_prompt() -> str:
     return (
-        "Task: NER, identify the NER tag of the entity in the sentence span.\n"
-        "Labels: PER ORG, LOC, ANIM, BIO, CEL, DIS, EVE, FOOD, INST, MEDIA, "
-        "MYTH, PLANT, TIME, VEHI.\n\nSentence: Paris is the capital of France.\n"
-        "Entity: Paris\nAnswer: LOC\n\n"
+        "ner: identify the NER tag of the entity in the sentence span.\n"
+        "tags: PER ORG, LOC, ANIM, BIO, CEL, DIS, EVE, FOOD, INST, MEDIA, "
+        "MYTH, PLANT, TIME, VEHI.\nsentence: Paris is the capital of France.\n"
+        "entity: Paris\nanswer: LOC\n"
     )
 
 
 def _t5_prompt(sentence: str, entity: str) -> str:
-    return f"Sentence: {sentence}\nEntity: {entity}\nAnswer: "
+    return f"sentence: {sentence}\nentity: {entity}\nanswer: "
 
 
 def _get_sys_prompt(tokenizer: PreTrainedTokenizerFast, model_type: str) -> str:

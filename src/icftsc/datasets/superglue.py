@@ -57,15 +57,15 @@ def _gpt_sys_prompt(bos: str | None) -> str:
 
 def _gpt_prompt(question: str, passage: str, bos: str | None) -> str:
     _bos = bos if bos is not None else ""
-    return f"{_bos}Passage: {passage}\nQuestion: {question}\nAnswer: "
+    return f"{_bos}passage: {passage}\nquestion: {question}\nanswer: "
 
 
 def _t5_sys_prompt() -> str:
     return (
-        "Task: Boolean Question Answering.\nGiven a passage and a question, "
-        'answer with "true" or "false".\n\nPassage: The Great Wall of '
-        "China is a series of fortifications made of stone.\nQuestion: Is the "
-        "Great Wall of China made of stone?\nAnswer: true\n\n"
+        "boolean question answering: given a passage and a question, "
+        'answer with "true" or "false".\npassage: The Great Wall of '
+        "China is a series of fortifications made of stone.\nquestion: Is the "
+        "Great Wall of China made of stone?\nanswer: true\n"
     )
 
 

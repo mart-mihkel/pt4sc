@@ -3,6 +3,7 @@ import threading
 
 import accelerate
 import datasets
+import evaluate
 import httpx
 import numpy
 import torch
@@ -12,7 +13,7 @@ from rich.logging import RichHandler
 from rich.traceback import Traceback, install
 
 _console = Console()
-_suppress = [transformers, datasets, torch, accelerate, httpx, numpy]
+_suppress = [transformers, datasets, torch, accelerate, httpx, numpy, evaluate]
 _handler = RichHandler(
     show_path=False,
     console=_console,

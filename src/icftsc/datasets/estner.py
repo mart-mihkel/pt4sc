@@ -93,15 +93,15 @@ def _gpt_sys_prompt(bos: str | None) -> str:
 
 def _gpt_prompt(sentence: str, entity: str, bos: str | None) -> str:
     _bos = bos if bos is not None else ""
-    return f"{_bos}Lause: {sentence}\nÜksus: {entity}\nVastus: "
+    return f"{_bos}lause: {sentence}\nüksus: {entity}\nvastus: "
 
 
 def _t5_sys_prompt() -> str:
     return (
-        "Ülesanne: NER, tuvasta lauses oleva sihtüksuse NER-märgend.\nMärgendid: "
+        "ner: tuvasta lauses oleva sihtüksuse NER-märgend.\nmärgendid: "
         "PER, ORG, LOC, GPE, PROD, EVENT, DATE, TIME, TITLE, MONEY, PERCENT, "
-        "O.\n\nLause: Pariis on Prantusmaa pealinn.\nSihtüksus: Pariis\nMärgend: "
-        "LOC\n\n"
+        "O.\nlause: Pariis on Prantusmaa pealinn.\nsihtüksus: Pariis\nmärgend: "
+        "LOC\n"
     )
 
 
