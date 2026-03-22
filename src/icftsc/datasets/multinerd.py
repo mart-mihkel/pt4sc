@@ -313,7 +313,7 @@ def init_multinerd(
         logger.info("using english only subset")
         data = data.filter(_filter_english, batched=True)
 
-    logger.warning("using %d%% of data", int(subset * 100))
+    logger.warning("using %d%% of dev and train data", int(subset * 100))
     if "train" in data:
         idx_train = range(int(subset * len(data["train"])))
         data["train"] = data["train"].select(idx_train)
@@ -321,10 +321,6 @@ def init_multinerd(
     if "dev" in data:
         idx_dev = range(int(subset * len(data["dev"])))
         data["dev"] = data["dev"].select(idx_dev)
-
-    if "test" in data:
-        idx_test = range(int(subset * len(data["test"])))
-        data["test"] = data["test"].select(idx_test)
 
     data = data.map(
         _tokenize,

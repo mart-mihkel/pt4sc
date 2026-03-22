@@ -57,15 +57,23 @@ def save_params(params: dict[str, Any], run_name: str):
 def init_metrics_fn(
     task: Task,
     tokenizer: PreTrainedTokenizerFast,
-) -> Callable[[EvalPrediction], dict[str, int | float]]:
+) -> Callable[[EvalPrediction, bool], dict[str, int | float]]:
     if task == "seqcls":
         return compute_metrics_seq_cls
 
     if task == "seq2seq":
-        return lambda eval_pred: compute_metrics_seq2seq(eval_pred, tokenizer)
+        return lambda eval_pred, compute_result: compute_metrics_seq2seq(
+            eval_pred=eval_pred,
+            compute_result=compute_result,
+            tokenizer=tokenizer,
+        )
 
     if task == "causal":
-        return lambda eval_pred: compute_metrics_causal_lm(eval_pred, tokenizer)
+        return lambda eval_pred, compute_result: compute_metrics_causal_lm(
+            eval_pred=eval_pred,
+            compute_result=compute_result,
+            tokenizer=tokenizer,
+        )
 
     raise NotImplementedError(f"Task '{task}'")
 
@@ -298,7 +306,7 @@ def train(
     model: Module,
     data: DatasetDict,
     collate_fn: DataCollator,
-    metrics_fn: Callable[[EvalPrediction], dict[str, int | float]],
+    metrics_fn: Callable[[EvalPrediction, bool], dict[str, int | float]],
     run_name: str,
     epochs: int,
     learning_rate: float,
@@ -310,7 +318,6 @@ def train(
     have_cuda = torch.cuda.is_available()
     optim = "adamw_8bit" if have_cuda else "adamw_torch_fused"
 
-    eval_acc_steps = 8
     grad_acc_steps = max(1, ceil(effective_batch_size / batch_size))
     actual_effective_batch_size = batch_size * grad_acc_steps
 
@@ -329,8 +336,6 @@ def train(
         grad_acc_steps,
     )
 
-    logger.debug("%d eval accumulation steps", eval_acc_steps)
-
     args = TrainingArguments(
         run_name=run_name,
         report_to=report_to,
@@ -338,7 +343,7 @@ def train(
         save_strategy="no",
         eval_strategy="steps",
         eval_steps=eval_steps,
-        eval_accumulation_steps=8,
+        batch_eval_metrics=True,
         logging_steps=logging_steps,
         learning_rate=learning_rate,
         optim=optim,
@@ -351,13 +356,14 @@ def train(
         bf16=have_cuda,
     )
 
+    _metrics_fn = cast(Callable[[EvalPrediction], dict[str, int | float]], metrics_fn)
     trainer = Trainer(
         args=args,
         model=model,
         train_dataset=data["train"],
         eval_dataset=data["dev"],
         data_collator=collate_fn,
-        compute_metrics=metrics_fn,
+        compute_metrics=_metrics_fn,
     )
 
     if mlflow_tracking_uri is not None:

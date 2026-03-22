@@ -53,6 +53,7 @@ def test_pt_bert(mmbert_tokenizer: PreTrainedTokenizerFast):
     config = PTModelConfig(
         pretrained_model="jhu-clsp/mmBERT-base",
         num_virtual_tokens=10,
+        task="seqcls",
         num_labels=2,
         id2label={0: "0", 1: "1"},
         label2id={"0": 0, "1": 1},
@@ -80,6 +81,7 @@ def test_pt_gpt2_seq_cls(gpt2_tokenizer: PreTrainedTokenizerFast):
     config = PTModelConfig(
         pretrained_model="openai-community/gpt2",
         num_virtual_tokens=10,
+        task="seqcls",
         num_labels=2,
         id2label={0: "0", 1: "1"},
         label2id={"0": 0, "1": 1},
@@ -108,6 +110,7 @@ def test_pt_t5(t5_tokenizer: PreTrainedTokenizerFast):
     config = PTModelConfig(
         pretrained_model="google-t5/t5-small",
         num_virtual_tokens=10,
+        task="seqcls",
         num_labels=2,
         id2label={0: "0", 1: "1"},
         label2id={"0": 0, "1": 1},

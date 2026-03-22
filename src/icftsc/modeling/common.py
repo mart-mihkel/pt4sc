@@ -131,7 +131,7 @@ class PTModel(PreTrainedModel):
         batch_size = input_ids.shape[0]
         prefix_ids = torch.full(
             (batch_size, self.config.num_virtual_tokens),
-            100,
+            0,
             device=input_ids.device,
             dtype=input_ids.dtype,
         )
